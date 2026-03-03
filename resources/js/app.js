@@ -27,7 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', function () {
                 group.querySelectorAll('.vtog-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
-                filterTable(this.textContent.trim().toLowerCase());
+
+                // Call setGender with the role name
+                let role = this.textContent.trim().toLowerCase(); 
+                setGender(this, role);
             });
         });
     });

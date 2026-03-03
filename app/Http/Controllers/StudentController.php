@@ -1,15 +1,36 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\Log; 
 use Illuminate\Http\Request;
 
 class StudentController extends Controller
 {
     public function index(Request $request)
     {
-    
-        return view('students.index');
+       if ($request->ajax()) {
+        try {
+            $data = DB::select("CALL usp_get_data(?,?)", [2, null]);
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => $data
+            ]);
+
+        } catch (\Exception $e) {
+            
+            Log::error("Student Portal Error: " . $e->getMessage());
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage() 
+            ], 400);
+        }
+    }
+
+    return view('students.index');
+
     }
 
     public function create()

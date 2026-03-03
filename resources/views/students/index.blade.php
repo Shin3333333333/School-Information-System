@@ -156,51 +156,13 @@
                     </th>
                 </tr>
             </thead>
-            <tbody>
-                @php
-                $students = [
-                    ['name'=>'Maria Santos','id'=>'maria@gmail.com','role'=>'Student','status'=>'active','active'=>true],
-                    ['name'=>'Juan dela Cruz','id'=>'juan@gmail.com','role'=>'Teacher','status'=>'inactive','active'=>false],
-                    ['name'=>'Ana Reyes','id'=>'ana@gmail.com','role'=>'Student','status'=>'active','active'=>true],
-                    ['name'=>'Carlos Mendoza','id'=>'carlos@gmail.com','role'=>'Student','status'=>'inactive','active'=>false],
-                    ['name'=>'Sofia Villanueva','id'=>'sofia@gmail.com','role'=>'Student','status'=>'active','active'=>true],
-                    ['name'=>'Miguel Torres','id'=>'miguel@gmail.com','role'=>'Student','status'=>'inactive','active'=>false],
-                    ['name'=>'Isabella Ramos','id'=>'isabella@gmail.com','role'=>'Student','status'=>'active','active'=>true],
-                ];
-                @endphp
-
-                @foreach($students as $i => $student)
-                <tr class="{{ $i === 4 ? 'highlighted' : '' }}">
-                    <td>
-                        <div class="cell-detail">
-                            <div class="detail-dot {{ $student['active'] ? 'dot-green' : 'dot-red' }}"></div>
-                            <div>
-                                <div class="detail-text">{{ $student['name'] }}</div>
-                                <div class="detail-sub">{{ $student['id'] }}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="cell-currency">
-                            <div style="font-weight:500;">{{ $student['role'] }}</div>
-                        </div>
-                    </td>
-                    <td>
-                        @if($student['status'] === 'active')
-                            <span class="status-badge status-active">
-                                <svg width="7" height="7" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>
-                                Active
-                            </span>
-                        @else
-                            <span class="status-badge status-inactive">
-                                <svg width="7" height="7" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>
-                                Inactive
-                            </span>
-                        @endif
-                    </td>
+            <tbody id="student-table-body">
+                <!-- AJAX will inject rows here -->
+                <tr>
+                    <td colspan="3" style="text-align:center;">Loading students...</td>
                 </tr>
-                @endforeach
             </tbody>
+
         </table>
     </div>
 
@@ -223,10 +185,106 @@
 @endsection
 
 @push('scripts')
+
 <script>
-function setGender(btn, gender) {
+let allStudents = [];
+let currentRoleFilter = 'all';
+let role = '';
+function setGender(btn, role) {
     document.querySelectorAll('.vtog-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+
+    currentRoleFilter = role;
+    console.log(currentRoleFilter);
+    renderStudents(currentRoleFilter);
+}
+
+$(document).ready(function() {
+    fetchStudents();
+});
+
+function fetchStudents() {
+    $.ajax({
+        url: "{{ route('students.index') }}",
+        type: "GET",
+        dataType: "json",
+        success: function(response) {
+            console.log(response);
+
+            allStudents = response.data; // store globally
+            renderStudents();
+        },
+        error: function(xhr) {
+            let errorMsg = xhr.responseJSON ? xhr.responseJSON.message : "Fatal Error";
+            $('#student-table-body').html(
+                `<tr><td colspan="3" style="color:red; text-align:center;">${errorMsg}</td></tr>`
+            );
+        }
+    });
+}
+
+function renderStudents() {
+    let tbody = $('#student-table-body');
+    tbody.empty();
+
+    if (!allStudents || allStudents.length === 0) {
+        tbody.append('<tr><td colspan="3" style="text-align:center;">No records found.</td></tr>');
+        return;
+    }
+
+    let filter = currentRoleFilter.trim().toLowerCase();
+
+    let filtered = allStudents.filter(student => {
+        let role = student.role_name?.trim().toLowerCase() ?? '';
+
+        if (filter === 'all') return true;
+
+        let isMatch = role === filter;
+        console.log("Checking student:", student.name, "role:", role, "against filter:", filter, "=>", isMatch);
+
+        return isMatch;
+    });
+
+    if (filtered.length === 0) {
+        tbody.append('<tr><td colspan="3" style="text-align:center;">No matching records.</td></tr>');
+        return;
+    }
+
+    $.each(filtered, function(i, student) {
+        let status = (student.status ?? 'inactive').toLowerCase();
+        let isActive = status === 'active';
+        let dotClass = isActive ? 'dot-green' : 'dot-red';
+        let badgeClass = isActive ? 'status-active' : 'status-inactive';
+        let statusText = status.charAt(0).toUpperCase() + status.slice(1);
+
+        let row = `
+            <tr>
+                <td>
+                    <div class="cell-detail">
+                        <div class="detail-dot ${dotClass}"></div>
+                        <div>
+                            <div class="detail-text">${student.name ?? 'N/A'}</div>
+                            <div class="detail-sub">${student.email ?? 'N/A'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="cell-currency">
+                        <div style="font-weight:500;">${student.role_name ?? 'N/A'}</div>
+                    </div>
+                </td>
+                <td>
+                    <span class="status-badge ${badgeClass}">
+                        <svg width="7" height="7" viewBox="0 0 8 8" fill="currentColor">
+                            <circle cx="4" cy="4" r="4"/>
+                        </svg>
+                        ${statusText}
+                    </span>
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
 }
 </script>
 @endpush
