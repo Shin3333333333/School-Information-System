@@ -107,4 +107,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // ── Global Loading Modal Control ──────────────────────────────
+    window.loadingModal = {
+        modalElement: document.getElementById('loading-modal'),
+
+        show: function() {
+            if (this.modalElement) {
+                this.modalElement.classList.add('show');
+            }
+        },
+
+        hide: function() {
+            if (this.modalElement) {
+                this.modalElement.classList.remove('show');
+            }
+        }
+    };
+
+    // ── Page Transition Loading ───────────────────────────────────
+    document.querySelectorAll('a').forEach(link => {
+        // Only apply to internal links, not those opening in a new tab or javascript handlers
+        if (link.hostname === window.location.hostname && link.target !== '_blank' && !link.href.startsWith('javascript:')) {
+            link.addEventListener('click', function(e) {
+                // Don't show for anchor links on the same page
+                if (this.pathname === window.location.pathname && this.hash) {
+                    return;
+                }
+                loadingModal.show();
+            });
+        }
+    });
+
 });

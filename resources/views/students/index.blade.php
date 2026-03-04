@@ -187,6 +187,7 @@
 @push('scripts')
 
 <script>
+    
 let allStudents = [];
 let currentRoleFilter = 'all';
 let role = '';

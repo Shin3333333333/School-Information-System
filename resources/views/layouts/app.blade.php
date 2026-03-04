@@ -140,8 +140,16 @@
 
     </main>
 </div>
-<!-- jQuery CDN (latest 3.x version) -->
-
+<div id="loading-modal" class="loading-modal-overlay">
+    <div class="loading-modal-content">
+        <span class="loading loading-ring loading-xs"></span>
+        <span class="loading loading-ring loading-sm"></span>
+        <span class="loading loading-ring loading-md"></span>
+        <span class="loading loading-ring loading-lg"></span>
+        <span class="loading loading-ring loading-xl"></span>
+        <span class="loading loading-ring loading-2xl"></span>
+    </div>
+</div>
 @stack('scripts')
 </body>
 </html>

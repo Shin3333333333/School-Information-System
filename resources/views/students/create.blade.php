@@ -151,6 +151,7 @@ $(document).ready(function() {
     
     $('#studentForm').on('submit', function(e) {
         e.preventDefault(); // Prevent the default browser form submission
+        loadingModal.show(); // Show loading indicator
 
         let formData = {
             last_name: $('input[name="last_name"]').val(),
@@ -187,6 +188,9 @@ $(document).ready(function() {
                 } else {
                     alert(xhr.responseJSON?.message || "Something went wrong.");
                 }
+            },
+            complete: function() {
+                loadingModal.hide(); // Hide loading indicator regardless of outcome
             }
         });
     });
