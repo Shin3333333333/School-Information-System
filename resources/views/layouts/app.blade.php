@@ -11,6 +11,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <body>
 
 <div class="app-shell">
@@ -139,7 +140,8 @@
 
     </main>
 </div>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- jQuery CDN (latest 3.x version) -->
+
 @stack('scripts')
 </body>
 </html>

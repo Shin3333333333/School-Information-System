@@ -29,7 +29,7 @@ Route::resource('students', StudentController::class);
 Route::resource('enrollment', EnrollmentController::class)->only(['index','show']);
 Route::resource('fees', FeeController::class)->only(['index','create','store']);
 Route::resource('grades', GradeController::class)->only(['index','edit','update']);
-
+Route::post('students', [StudentController::class, 'store'])->name('api.students.store');
 Route::prefix('admin')->name('api.admin.')->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('index');
 });

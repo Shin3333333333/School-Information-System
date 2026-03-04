@@ -25,7 +25,8 @@
             <span class="status-badge status-pending">Draft</span>
         </div>
 
-        <form method="POST" action="{{ route('students.store') }}" class="card-body form-section">
+        {{-- Added id="studentForm" here --}}
+        <form id="studentForm" method="POST" action="{{ route('students.store') }}" class="card-body form-section">
             @csrf
 
             {{-- Personal Information --}}
@@ -102,8 +103,8 @@
                     <div class="filter-group">
                         <span class="filter-label">Type *</span>
                         <select name="student_type" class="form-select">
-                            <option>Student</option>
-                            <option>Teacher</option>
+                            <option value="2">Student</option>
+                            <option value="1">Teacher</option>
                         </select>
                     </div>
                     <div class="filter-group">
@@ -136,5 +137,60 @@
         </form>
     </div>
 </div>
+
+{{-- AJAX script --}}
+
+<script>
+$(document).ready(function() {
+    // Automatically include CSRF token in all AJAX requests for security
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
+    
+    $('#studentForm').on('submit', function(e) {
+        e.preventDefault(); // Prevent the default browser form submission
+
+        let formData = {
+            last_name: $('input[name="last_name"]').val(),
+            first_name: $('input[name="first_name"]').val(),
+            middle_name: $('input[name="middle_name"]').val(),
+            dob: $('input[name="dob"]').val(),
+            sex: $('select[name="sex"]').val(),
+            civil_status: $('select[name="civil_status"]').val(),
+            address: $('input[name="address"]').val(),
+            grade_level: $('select[name="grade_level"]').val(),
+            section: $('select[name="section"]').val(),
+            student_type: $('select[name="student_type"]').val(),
+            lrn: $('input[name="lrn"]').val(),
+            contact: $('input[name="contact"]').val(),
+            email: $('input[name="email"]').val()
+        };
+
+        $.ajax({
+            url: '{{ route("students.store") }}',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function(response) {
+                alert(response.message);
+                $('#studentForm')[0].reset();
+            },
+            error: function(xhr) {
+                if (xhr.status === 422) {
+                    let messages = '';
+                    $.each(xhr.responseJSON.errors, function(key, val) {
+                        messages += val[0] + "\n";
+                    });
+                    alert(messages);
+                } else {
+                    alert(xhr.responseJSON?.message || "Something went wrong.");
+                }
+            }
+        });
+    });
+});
+</script>
 
 @endsection
