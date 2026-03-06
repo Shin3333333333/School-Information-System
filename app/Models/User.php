@@ -20,7 +20,17 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'id_number', // Add id_number here
+        'role_id',   // Add the foreign key for the role
     ];
+
+    /**
+     * Define the relationship to the Role model.
+     */
+    public function role()
+    {
+        return $this->belongsTo(Role::class);
+    }
 
     /**
      * The attributes that should be hidden for serialization.
