@@ -3,7 +3,7 @@
 @section('title', 'Dashboard — School Information System')
 
 @section('page-title')
-    <h2>Dashboard</h2>
+    <h2><span style="text-transform: capitalize;">{{ $userRole }}</span> Dashboard</h2>
 @endsection
 
 @section('content')

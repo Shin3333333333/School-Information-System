@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Auth;
+
 class DashboardController extends Controller
 {
     public function index()
@@ -12,6 +14,18 @@ class DashboardController extends Controller
         //     'pending_fees' => Payment::where('status', 'unpaid')->count(),
         //     'new_this_month' => Student::whereMonth('created_at', now()->month)->count(),
         // ];
-        return view('dashboard');
+        $userRole = session('user_role');
+
+        switch ($userRole) {
+            case 'Admin':
+                return view('dashboard', ['userRole' => $userRole]);
+            case 'Teacher':
+                return view('teacher.dashboard', ['userRole' => $userRole]);
+            default:
+                Auth::logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
+                return redirect()->route('login')->with('error', 'Invalid role. Please log in again.');
+        }
     }
 }

@@ -11,6 +11,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <body>
 
 <div class="app-shell">
@@ -46,6 +47,7 @@
         </div>
 
         <nav class="sidebar-nav">
+            @if(session('user_role') == 'Admin')
             <span class="nav-section-label">MAIN</span>
 
             <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
@@ -91,15 +93,17 @@
                 </svg>
                 Policies
             </a>
-
+            @endif
         </nav>
 
         <div class="sidebar-footer">
-            <button class="btn-switch">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                    <path d="M8 7l-5 5 5 5M16 7l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <button class="btn-switch" id="sidebar-logout-button">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
                 </svg>
-                Switch Role
+                Logout
             </button>
         </div>
     </aside>
@@ -126,8 +130,9 @@
                     </svg>
                     <span class="badge">3</span>
                 </button>
-                <div class="avatar-wrap">
-                    <div class="avatar">AD</div>
+                <div class="avatar-wrap dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="avatar">AD</div>
+                  
                 </div>
             </div>
         </header>
@@ -139,5 +144,96 @@
 
     </main>
 </div>
+<div id="loading-modal" class="loading-modal-overlay">
+    <div class="loading-modal-content">
+        <span class="loading loading-ring loading-xs"></span>
+        <span class="loading loading-ring loading-sm"></span>
+        <span class="loading loading-ring loading-md"></span>
+        <span class="loading loading-ring loading-lg"></span>
+        <span class="loading loading-ring loading-xl"></span>
+        <span class="loading loading-ring loading-2xl"></span>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmation-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000;">
+    <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; width: 90%; max-width: 400px;">
+        <h3 id="modal-title" style="margin-top: 0; font-size: 1.25rem;">Confirmation</h3>
+        <p id="modal-body" style="margin-bottom: 25px;">Are you sure?</p>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button id="modal-cancel-btn" class="btn btn-secondary">Cancel</button>
+            <button id="modal-confirm-btn" class="btn btn-danger">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+    @csrf
+</form>
+
+@stack('scripts')
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loadingModal = document.getElementById('loading-modal');
+
+    // --- Logout Modal Logic ---
+    const logoutButton = document.getElementById('sidebar-logout-button');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            showConfirmationModal(
+                'Logout Confirmation',
+                'Are you sure you want to log out?',
+                function() {
+                    if (loadingModal) loadingModal.style.display = 'flex';
+                    document.getElementById('logout-form').submit();
+                }
+            );
+        });
+    }
+
+    // --- Page Transition Loading Modal ---
+    const navLinks = document.querySelectorAll('.sidebar-nav .nav-item');
+    navLinks.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            // Don't show for links opening in new tabs
+            if (link.target === '_blank') {
+                return;
+            }
+            if (loadingModal) loadingModal.style.display = 'flex';
+        });
+    });
+
+    // Hide loading modal if user navigates back
+    window.addEventListener('pageshow', function(event) {
+        if (loadingModal) loadingModal.style.display = 'none';
+    });
+});
+
+function showConfirmationModal(title, body, onConfirm) {
+    const modal = document.getElementById('confirmation-modal');
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').textContent = body;
+
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+    const cancelBtn = document.getElementById('modal-cancel-btn');
+
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.addEventListener('click', function() {
+        onConfirm();
+        modal.style.display = 'none';
+    });
+
+    cancelBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+
+    modal.style.display = 'flex';
+}
+</script>
+
 </body>
 </html>
