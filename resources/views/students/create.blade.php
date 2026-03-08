@@ -25,7 +25,6 @@
             <span class="status-badge status-pending">Draft</span>
         </div>
 
-        {{-- Added id="studentForm" here --}}
         <form id="studentForm" method="POST" action="{{ route('students.store') }}" class="card-body form-section">
             @csrf
 
@@ -71,20 +70,42 @@
                 </div>
             </div>
 
-            {{-- Placement --}}
+            {{-- User Type Selector (always visible) --}}
             <div>
-                <div class="form-section-divider">Placement</div>
+                <div class="form-section-divider">Placement & Role</div>
+                <div class="form-grid-3">
+                    <div class="filter-group">
+                        <span class="filter-label">Type *</span>
+                        <select name="student_type" id="userTypeSelect" class="form-select">
+                            <option value="2">Student</option>
+                            <option value="1">Teacher / Faculty</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Contact Number *</span>
+                        <input type="tel" name="contact" class="form-input" placeholder="09XX XXX XXXX" required>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Email Address</span>
+                        <input type="email" name="email" class="form-input" placeholder="user@email.com">
+                    </div>
+                </div>
+            </div>
+
+            {{-- ── STUDENT-ONLY FIELDS ── --}}
+            <div id="studentFields">
+                <div class="form-section-divider">Student Details</div>
                 <div class="form-grid-3">
                     <div class="filter-group">
                         <span class="filter-label">Academic Year *</span>
-                        <select name="academic_year" class="form-select" required>
+                        <select name="academic_year" class="form-select">
                             <option>2024–2025</option>
                             <option>2025–2026</option>
                         </select>
                     </div>
                     <div class="filter-group">
                         <span class="filter-label">Grade Level *</span>
-                        <select name="grade_level" class="form-select" required>
+                        <select name="grade_level" class="form-select">
                             <option value="">Select…</option>
                             @for($g=7;$g<=12;$g++)
                                 <option>Grade {{ $g }}</option>
@@ -93,7 +114,7 @@
                     </div>
                     <div class="filter-group">
                         <span class="filter-label">Section *</span>
-                        <select name="section" class="form-select" required>
+                        <select name="section" class="form-select">
                             <option value="">Select…</option>
                             <option>Section A</option>
                             <option>Section B</option>
@@ -101,23 +122,50 @@
                         </select>
                     </div>
                     <div class="filter-group">
-                        <span class="filter-label">Type *</span>
-                        <select name="student_type" class="form-select">
-                            <option value="2">Student</option>
-                            <option value="1">Teacher</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
                         <span class="filter-label">LRN (DepEd)</span>
                         <input type="text" name="lrn" class="form-input" placeholder="12-digit number" maxlength="12">
                     </div>
+                </div>
+            </div>
+
+            {{-- ── TEACHER-ONLY FIELDS ── --}}
+            <div id="teacherFields" style="display:none;">
+                <div class="form-section-divider">Faculty Details</div>
+                <div class="form-grid-3">
                     <div class="filter-group">
-                        <span class="filter-label">Contact Number *</span>
-                        <input type="tel" name="contact" class="form-input" placeholder="09XX XXX XXXX" required>
+                        <span class="filter-label">Employee ID *</span>
+                        <input type="text" name="employee_id" class="form-input" placeholder="EMP-00001">
                     </div>
                     <div class="filter-group">
-                        <span class="filter-label">Email Address</span>
-                        <input type="email" name="email" class="form-input" placeholder="guardian@email.com">
+                        <span class="filter-label">Department *</span>
+                        <select name="department" class="form-select">
+                            <option value="">Select…</option>
+                            <option>Junior High School</option>
+                            <option>Senior High School</option>
+                            <option>Administration</option>
+                            <option>Guidance</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Position / Designation *</span>
+                        <input type="text" name="position" class="form-input" placeholder="e.g. Subject Teacher, Adviser">
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Specialization</span>
+                        <input type="text" name="specialization" class="form-input" placeholder="e.g. Mathematics, Filipino">
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Date Hired</span>
+                        <input type="date" name="date_hired" class="form-input">
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Employment Status</span>
+                        <select name="employment_status" class="form-select">
+                            <option>Permanent</option>
+                            <option>Temporary</option>
+                            <option>Contractual</option>
+                            <option>Part-time</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -138,62 +186,101 @@
     </div>
 </div>
 
-{{-- AJAX script --}}
-
 <script>
-$(document).ready(function() {
-    // Automatically include CSRF token in all AJAX requests for security
-    $.ajaxSetup({
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        }
-    });
-    
-    $('#studentForm').on('submit', function(e) {
-        e.preventDefault(); // Prevent the default browser form submission
-        loadingModal.show(); // Show loading indicator
 
-        let formData = {
-            last_name: $('input[name="last_name"]').val(),
-            first_name: $('input[name="first_name"]').val(),
-            middle_name: $('input[name="middle_name"]').val(),
-            dob: $('input[name="dob"]').val(),
-            sex: $('select[name="sex"]').val(),
+// ── Page Load: show loading until DOM is ready ────────────────────────────────
+// loadingModal.show();
+$(document).ready(function () {
+    loadingModal.show();
+
+    // ── Toggle section visibility ─────────────────────────────────────────────
+    function toggleUserTypeFields(type) {
+        var isTeacher = (type === '1');
+        $('#studentFields').toggle(!isTeacher);
+        $('#teacherFields').toggle(isTeacher);
+        $('#studentFields').find('[data-required]').prop('required', !isTeacher);
+        $('#teacherFields').find('[data-required]').prop('required', isTeacher);
+    }
+
+    toggleUserTypeFields($('#userTypeSelect').val());
+
+    $('#userTypeSelect').on('change', function () {
+        toggleUserTypeFields($(this).val());
+    });
+
+    // ── AJAX setup ────────────────────────────────────────────────────────────
+    $.ajaxSetup({
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+    });
+
+    // ── Form submit ───────────────────────────────────────────────────────────
+    $('#studentForm').on('submit', function (e) {
+        e.preventDefault();
+        loadingModal.show();
+
+        var userType  = $('#userTypeSelect').val();
+        var isTeacher = (userType === '1');
+
+        var formData = {
+            last_name:    $('input[name="last_name"]').val(),
+            first_name:   $('input[name="first_name"]').val(),
+            middle_name:  $('input[name="middle_name"]').val(),
+            dob:          $('input[name="dob"]').val(),
+            sex:          $('select[name="sex"]').val(),
             civil_status: $('select[name="civil_status"]').val(),
-            address: $('input[name="address"]').val(),
-            grade_level: $('select[name="grade_level"]').val(),
-            section: $('select[name="section"]').val(),
-            student_type: $('select[name="student_type"]').val(),
-            lrn: $('input[name="lrn"]').val(),
-            contact: $('input[name="contact"]').val(),
-            email: $('input[name="email"]').val()
+            address:      $('input[name="address"]').val(),
+            student_type: userType,
+            contact:      $('input[name="contact"]').val(),
+            email:        $('input[name="email"]').val(),
         };
 
+        if (isTeacher) {
+            $.extend(formData, {
+                employee_id:       $('input[name="employee_id"]').val(),
+                department:        $('select[name="department"]').val(),
+                position:          $('input[name="position"]').val(),
+                specialization:    $('input[name="specialization"]').val(),
+                date_hired:        $('input[name="date_hired"]').val(),
+                employment_status: $('select[name="employment_status"]').val(),
+            });
+        } else {
+            $.extend(formData, {
+                academic_year: $('select[name="academic_year"]').val(),
+                grade_level:   $('select[name="grade_level"]').val(),
+                section:       $('select[name="section"]').val(),
+                lrn:           $('input[name="lrn"]').val(),
+            });
+        }
+
         $.ajax({
-            url: '{{ route("students.store") }}',
-            type: 'POST',
+            url:         '{{ route("students.store") }}',
+            type:        'POST',
             contentType: 'application/json',
-            data: JSON.stringify(formData),
-            success: function(response) {
-                alert(response.message);
+            data:        JSON.stringify(formData),
+
+            success: function (response) {
                 $('#studentForm')[0].reset();
+                toggleUserTypeFields('2');
+                showPopup('Saved Successfully', response.message, 'success');
             },
-            error: function(xhr) {
+
+            error: function (xhr) {
                 if (xhr.status === 422) {
-                    let messages = '';
-                    $.each(xhr.responseJSON.errors, function(key, val) {
-                        messages += val[0] + "\n";
-                    });
-                    alert(messages);
+                    var messages = Object.values(xhr.responseJSON.errors)
+                                         .map(function(v){ return v[0]; })
+                                         .join('\n');
+                    showPopup('Validation Error', messages, 'warning');
                 } else {
-                    alert(xhr.responseJSON?.message || "Something went wrong.");
+                    showPopup('Error', xhr.responseJSON?.message || 'Something went wrong.', 'error');
                 }
             },
-            complete: function() {
-                loadingModal.hide(); // Hide loading indicator regardless of outcome
+
+            complete: function () {
+                loadingModal.hide();
             }
         });
     });
+
 });
 </script>
 

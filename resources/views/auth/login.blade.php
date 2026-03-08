@@ -113,6 +113,11 @@ document.querySelectorAll('.login-role-btn input').forEach(radio => {
     });
 });
  $(document).ready(function() {
+        $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+         });
         $('.login-form').on('submit', function(e) {
             loadingModal.show();
             e.preventDefault(); // Prevent the default form submission

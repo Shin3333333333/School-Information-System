@@ -1,3 +1,19 @@
+// ── Global Popup ──────────────────────────────────────────────────────────────
+function showPopup(title, message, type) {
+    type = type || 'success';
+    var config = {
+        success: { icon: '✅', color: '#10b981' },
+        error:   { icon: '❌', color: '#ef4444' },
+        warning: { icon: '⚠️',  color: '#f59e0b' },
+        info:    { icon: 'ℹ️',  color: '#3b82f6' },
+    };
+    var cfg = config[type] || config.success;
+    document.getElementById('popup-icon').textContent         = cfg.icon;
+    document.getElementById('popup-title').textContent        = title;
+    document.getElementById('popup-message').textContent      = message;
+    document.getElementById('popup-box').style.borderTopColor = cfg.color;
+    document.getElementById('popup-modal').style.display      = 'flex';
+}
 document.addEventListener('DOMContentLoaded', () => {
 
     // ── Active nav highlighting (client-side fallback) ────────────
@@ -137,5 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+  // ✅ Guard — only attach if the popup exists on this page
+    var popupModal = document.getElementById('popup-modal');
+    if (popupModal) {
+        popupModal.addEventListener('click', function (e) {
+            if (e.target === this) closePopup();
+        });
+    }
 
 });

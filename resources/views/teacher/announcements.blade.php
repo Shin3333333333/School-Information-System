@@ -23,27 +23,13 @@
             <tr>
                 <th>Date Posted</th>
                 <th>Title</th>
-                <th>Description</th>
+                <th>Subject</th>
+                <!-- <th>Section</th> -->
             </tr>
         </thead>
-        <tbody>
+        <tbody id="announcementsTable">
             <tr>
-                <td class="cell-date">Mar 28, 2026</td>
-                <td>
-                    <button class="btn-ghost" onclick="openViewModal('Final Exams Begin','Exams schedule for all subjects','All Classes')">
-                        Final Exams Begin
-                    </button>
-                </td>
-                <td>Exams schedule for all subjects</td>
-            </tr>
-            <tr>
-                <td class="cell-date">Apr 02, 2026</td>
-                <td>
-                    <button class="btn-ghost" onclick="openViewModal('Grade Submission Deadline','Deadline for submitting grades','All Classes')">
-                        Grade Submission Deadline
-                    </button>
-                </td>
-                <td>Deadline for submitting grades</td>
+                <td colspan="4" style="text-align:center;">Loading...</td>
             </tr>
         </tbody>
     </table>
@@ -69,19 +55,17 @@
 <div id="postModal" style="display:none; position:fixed; inset:0; background-color: rgba(0,0,0,0.5); z-index:50; align-items:center; justify-content:center;">
     <div style="background:white; border-radius:var(--radius-lg); width:400px; padding:20px; box-shadow:var(--shadow-md);">
         <h3 class="section-title" style="margin-bottom:15px;">Post New Announcement</h3>
-        <form>
+        <form id="postForm">
             <label class="filter-label mb-1">Subject</label>
-            <select class="form-select mb-3">
-                <option value="all">All Classes</option>
-                <option value="math">Math</option>
-                <option value="science">Science</option>
+            <select id="subjectSelect" name="subject_id" class="form-select mb-3">
+                <option value="">— Select Subject —</option>
             </select>
 
             <label class="filter-label mb-1">Title</label>
-            <input type="text" class="form-input mb-3">
+            <input type="text" name="title" id="postTitle" class="form-input mb-3">
 
             <label class="filter-label mb-1">Description</label>
-            <textarea class="form-input mb-3" rows="4"></textarea>
+            <textarea name="description" id="postDescription" class="form-input mb-3" rows="4"></textarea>
 
             <div style="display:flex; justify-content:flex-end; gap:8px;">
                 <button type="button" class="btn btn-outline" onclick="closePostModal()">Cancel</button>
@@ -93,24 +77,119 @@
 
 
 <script>
-    const viewModal = document.getElementById('viewModal');
-    const postModal = document.getElementById('postModal');
-    const modalTitle = document.getElementById('modalTitle');
+    $.ajaxSetup({
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+    });
+
+    const viewModal        = document.getElementById('viewModal');
+    const postModal        = document.getElementById('postModal');
+    const modalTitle       = document.getElementById('modalTitle');
     const modalDescription = document.getElementById('modalDescription');
-    const modalSubject = document.getElementById('modalSubject');
+    const modalSubject     = document.getElementById('modalSubject');
 
     function openViewModal(title, description, subject) {
-        modalTitle.textContent = title;
+        modalTitle.textContent       = title;
         modalDescription.textContent = description;
-        modalSubject.textContent = subject;
-        viewModal.style.display = 'flex';
+        modalSubject.textContent     = subject;
+        viewModal.style.display      = 'flex';
     }
-    function closeViewModal() { viewModal.style.display = 'none'; }
 
-    document.getElementById('openPostModal').addEventListener('click', () => {
-        postModal.style.display = 'flex';
-    });
+    function closeViewModal() { viewModal.style.display = 'none'; }
     function closePostModal() { postModal.style.display = 'none'; }
+
+    document.getElementById('openPostModal').addEventListener('click', function () {
+        postModal.style.display = 'flex';
+
+        $.ajax({
+            url:    '{{ route("announcements.index") }}',
+            method: 'GET',
+            success: function (response) {
+                if (response.status === 'success') {
+                    const select = $('#subjectSelect');
+                    select.find('option:not(:first)').remove();
+
+                    $.each(response.data, function (i, subject) {
+                        select.append(
+                            `<option value="${subject.id}">${subject.subject_name}</option>`
+                        );
+                    });
+                } else {
+                    alert('Failed to load subjects: ' + response.message);
+                }
+            },
+            error: function (xhr) {
+                console.error('AJAX Error:', xhr.responseText);
+                alert('An error occurred while loading subjects.');
+            }
+        });
+    });
+    $('#postForm').on('submit', function (e) {
+    e.preventDefault();
+
+    const data = {
+        title:       $('#postTitle').val(),
+        description: $('#postDescription').val(),
+        subject_id:  $('#subjectSelect').val(),
+        date_posted: new Date().toISOString().slice(0, 10), // today's date YYYY-MM-DD
+    };
+
+    $.ajax({
+        url:    '{{ route("announcements.store") }}',
+        method: 'POST',
+        data:   data,
+        success: function (response) {
+            if (response.status === 'success') {
+                closePostModal();
+                alert(response.message);
+                location.reload(); // refresh table
+            } else {
+                alert('Error: ' + response.message);
+            }
+        },
+        error: function (xhr) {
+            console.error('AJAX Error:', xhr.responseText);
+            alert('An error occurred while posting the announcement.');
+        }
+    });
+});
+function loadAnnouncements() {
+    $.ajax({
+        url:    '{{ route("announcements.list") }}',
+        method: 'GET',
+        success: function (response) {
+            const tbody = $('#announcementsTable');
+            tbody.empty();
+
+            if (response.status === 'success' && response.data.length > 0) {
+                $.each(response.data, function (i, row) {
+                    tbody.append(`
+                        <tr>
+                            <td class="cell-date">${row.date_posted}</td>
+                            <td>
+                                <button class="btn-ghost" onclick="openViewModal('${row.title}', '${row.subject_name}', '${row.section_name}')">
+                                    ${row.title}
+                                </button>
+                            </td>
+                            <td>${row.subject_name}</td>
+                            <!-- <td>${row.section_name}</td> -->
+                        </tr>
+                    `);
+                });
+            } else {
+                tbody.append('<tr><td colspan="4" style="text-align:center;">No announcements found.</td></tr>');
+            }
+        },
+        error: function (xhr) {
+            console.error('AJAX Error:', xhr.responseText);
+            $('#announcementsTable').html('<tr><td colspan="4" style="text-align:center;">Failed to load announcements.</td></tr>');
+        }
+    });
+}
+
+// Load on page ready
+$(document).ready(function () {
+    loadAnnouncements();
+});
 </script>
 
 @endsection
