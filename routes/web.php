@@ -8,12 +8,12 @@ use App\Http\Controllers\FeeController;
 use App\Http\Controllers\GradeController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Auth\LoginController;
-
+use App\Http\Controllers\AnnouncementController;
 // Routes for Login and Logout
 Route::get('/', function () {
     return redirect()->route('login');
 });
-
+Route::post('login', [LoginController::class, 'ajaxLogin'])->name('login.submit');
 Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('login', [LoginController::class, 'login']);
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
@@ -51,4 +51,8 @@ Route::prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/announcements', function () { 
         return view('teacher.announcements'); 
     })->name('announcements'); 
+    
 });
+Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+Route::get('/announcements/list', [AnnouncementController::class, 'getAnnouncements'])->name('announcements.list');

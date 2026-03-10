@@ -130,9 +130,18 @@
                     </svg>
                     <span class="badge">3</span>
                 </button>
-                <div class="avatar-wrap dropdown dropdown-end">
-                    <div tabindex="0" role="button" class="avatar">AD</div>
-                  
+                {{-- Chat Toggle Button --}}
+                <button class="icon-btn chat-toggle-btn" onclick="toggleChatPanel()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="9" cy="10" r="1" fill="currentColor"/>
+                        <circle cx="12" cy="10" r="1" fill="currentColor"/>
+                        <circle cx="15" cy="10" r="1" fill="currentColor"/>
+                    </svg>
+                </button>
+                <div class="avatar-wrap dropdown dropdown-end"><div tabindex="0" role="button" class="avatar">
+                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}{{ strtoupper(substr(strstr(auth()->user()->name, ' '), 1, 1)) }}
+                    </div>
                 </div>
             </div>
         </header>
@@ -143,7 +152,64 @@
         </div>
 
     </main>
+
+    {{-- ── Chat Panel ── --}}
+    <aside class="chat-panel" id="chatPanel">
+        <div class="chat-header">
+            <div class="chat-header-left">
+                <div class="chat-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="chat-title">{{ auth()->user()->name }}</div>                </div>
+            </div>
+            <button class="chat-close-btn" onclick="toggleChatPanel()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="chat-body" id="chatBody">
+            <div class="chat-message assistant">
+                <div class="chat-avatar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="chat-bubble">
+                    <div class="chat-text">Hi! I'm your AI assistant. How can I help you?</div>
+                    <div class="chat-suggestions">
+                        <button class="suggestion-chip" onclick="sendMessage('How many students enrolled this year?')">How many students enrolled this year?</button>
+                        <button class="suggestion-chip" onclick="sendMessage('Show students with pending fees')">Show students with pending fees</button>
+                        <button class="suggestion-chip" onclick="sendMessage('What is our collection rate?')">What is our collection rate?</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-footer">
+            <form class="chat-input-form" onsubmit="handleChatSubmit(event)">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Ask about students, fees, grades..." autocomplete="off">
+                <button type="submit" class="chat-send-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </form>
+            <div class="chat-footer-note">AI responses may not be 100% accurate</div>
+        </div>
+    </aside>
+
+    {{-- Chat overlay --}}
+    <div class="chat-overlay" id="chatOverlay" onclick="toggleChatPanel()"></div>
+
 </div>
+
+{{-- Loading Modal --}}
 <div id="loading-modal" class="loading-modal-overlay">
     <div class="loading-modal-content">
         <span class="loading loading-ring loading-xs"></span>
@@ -155,7 +221,7 @@
     </div>
 </div>
 
-<!-- Confirmation Modal -->
+{{-- Confirmation Modal --}}
 <div id="confirmation-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000;">
     <div style="background: white; padding: 25px; border-radius: 8px; text-align: center; width: 90%; max-width: 400px;">
         <h3 id="modal-title" style="margin-top: 0; font-size: 1.25rem;">Confirmation</h3>
@@ -197,10 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const navLinks = document.querySelectorAll('.sidebar-nav .nav-item');
     navLinks.forEach(function(link) {
         link.addEventListener('click', function(e) {
-            // Don't show for links opening in new tabs
-            if (link.target === '_blank') {
-                return;
-            }
+            if (link.target === '_blank') return;
             if (loadingModal) loadingModal.style.display = 'flex';
         });
     });
@@ -233,6 +296,114 @@ function showConfirmationModal(title, body, onConfirm) {
 
     modal.style.display = 'flex';
 }
+
+// --- Chat Panel ---
+function toggleChatPanel() {
+    const panel = document.getElementById('chatPanel');
+    const overlay = document.getElementById('chatOverlay');
+    if (!panel || !overlay) return;
+
+    const isOpen = panel.classList.contains('open');
+    if (isOpen) {
+        panel.classList.remove('open');
+        overlay.classList.remove('active');
+    } else {
+        panel.classList.add('open');
+        overlay.classList.add('active');
+        setTimeout(() => {
+            const input = document.getElementById('chatInput');
+            if (input) input.focus();
+        }, 300);
+    }
+}
+
+function handleChatSubmit(event) {
+    event.preventDefault();
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (message) {
+        sendMessage(message);
+        input.value = '';
+    }
+}
+
+function sendMessage(message) {
+    const chatBody = document.getElementById('chatBody');
+    if (!chatBody) return;
+
+    appendMessage('user', message);
+
+    const typingIndicator = createTypingIndicator();
+    chatBody.appendChild(typingIndicator);
+    chatBody.scrollTop = chatBody.scrollHeight;
+
+    setTimeout(() => {
+        typingIndicator.remove();
+        const response = generateAIResponse(message);
+        appendMessage('assistant', response);
+    }, 1500);
+}
+
+function appendMessage(role, text) {
+    const chatBody = document.getElementById('chatBody');
+    if (!chatBody) return;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message ' + role;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-avatar';
+
+    if (role === 'assistant') {
+        avatar.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+    } else {
+        avatar.textContent = 'U';
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble';
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'chat-text';
+    textDiv.textContent = text;
+
+    bubble.appendChild(textDiv);
+    messageDiv.appendChild(avatar);
+    messageDiv.appendChild(bubble);
+
+    chatBody.appendChild(messageDiv);
+    chatBody.scrollTop = chatBody.scrollHeight;
+}
+
+function createTypingIndicator() {
+    const typing = document.createElement('div');
+    typing.className = 'chat-message assistant';
+    typing.innerHTML = '<div class="chat-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg></div><div class="chat-bubble"><div class="chat-text"><div class="chat-typing"><span></span><span></span><span></span></div></div></div>';
+    return typing;
+}
+
+function generateAIResponse(query) {
+    const lowerQuery = query.toLowerCase();
+
+    if (lowerQuery.includes('how many') && lowerQuery.includes('student')) {
+        return "Based on current enrollment data, we have 1,284 total students enrolled for academic year 2024-2025. This includes 1,198 active students across grades 7-12, with 24 new enrollments this month.";
+    }
+    if (lowerQuery.includes('pending') && lowerQuery.includes('fee')) {
+        return "There are currently 86 students with pending fee payments. The total outstanding amount is ₱680,000. Most of these are due within the next 7 days.";
+    }
+    if (lowerQuery.includes('collection rate')) {
+        return "Our current collection rate is 78% of total assessed fees. We've collected ₱2.41M out of ₱3.09M total.";
+    }
+    return "I understand you're asking about: \"" + query + "\". I can help you analyze student records, fee payments, enrollment stats, and more. Could you rephrase your question?";
+}
+
+// ESC key closes chat
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const panel = document.getElementById('chatPanel');
+        if (panel && panel.classList.contains('open')) toggleChatPanel();
+    }
+});
 </script>
 
 </body>

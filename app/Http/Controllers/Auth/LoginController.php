@@ -28,8 +28,8 @@ class LoginController extends Controller
     public function ajaxLogin(Request $request)
     {
         $credentials = $request->validate([
-            'email' => ['required', 'string', 'email'],
-            'password'  => ['required', 'string'],
+            'email'    => ['required', 'string', 'email'],
+            'password' => ['required', 'string'],
         ]);
 
         $user = User::with('role')->where('email', $credentials['email'])->first();
@@ -38,17 +38,15 @@ class LoginController extends Controller
             Auth::login($user);
             $request->session()->regenerate();
 
-            // Store role in session and get the role name
             $roleName = $user->role ? $user->role->name : null;
             $request->session()->put('user_role', $roleName);
 
             return response()->json(['success' => true, 'role' => $roleName]);
-        } else {
-            return response()->json(['success' => false, 'message' => 'Invalid credentials']);
         }
-    }
 
-    /**
+        return response()->json(['success' => false, 'message' => 'Invalid credentials'], 422);
+    }
+        /**
      * Log the user out of the application.
      */
     public function logout(Request $request)
