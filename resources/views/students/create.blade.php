@@ -187,11 +187,8 @@
 </div>
 
 <script>
-
-// ── Page Load: show loading until DOM is ready ────────────────────────────────
-// loadingModal.show();
 $(document).ready(function () {
-    loadingModal.show();
+    loadingModal.hide(); // ensure it's hidden on page load
 
     // ── Toggle section visibility ─────────────────────────────────────────────
     function toggleUserTypeFields(type) {
@@ -216,39 +213,39 @@ $(document).ready(function () {
     // ── Form submit ───────────────────────────────────────────────────────────
     $('#studentForm').on('submit', function (e) {
         e.preventDefault();
-        loadingModal.show();
+        loadingModal.show(); // show ONLY on submit
 
         var userType  = $('#userTypeSelect').val();
         var isTeacher = (userType === '1');
 
         var formData = {
-            last_name:    $('input[name="last_name"]').val(),
-            first_name:   $('input[name="first_name"]').val(),
-            middle_name:  $('input[name="middle_name"]').val(),
-            dob:          $('input[name="dob"]').val(),
-            sex:          $('select[name="sex"]').val(),
-            civil_status: $('select[name="civil_status"]').val(),
-            address:      $('input[name="address"]').val(),
+            last_name:    $('input[name="last_name"]').val()    || null,
+            first_name:   $('input[name="first_name"]').val()   || null,
+            middle_name:  $('input[name="middle_name"]').val()  || null,
+            dob:          $('input[name="dob"]').val()          || null,
+            sex:          $('select[name="sex"]').val()         || null,
+            civil_status: $('select[name="civil_status"]').val()|| null,
+            address:      $('input[name="address"]').val()      || null,
             student_type: userType,
-            contact:      $('input[name="contact"]').val(),
-            email:        $('input[name="email"]').val(),
+            contact:      $('input[name="contact"]').val()      || null,
+            email:        $('input[name="email"]').val()        || null,
         };
 
         if (isTeacher) {
             $.extend(formData, {
-                employee_id:       $('input[name="employee_id"]').val(),
-                department:        $('select[name="department"]').val(),
-                position:          $('input[name="position"]').val(),
-                specialization:    $('input[name="specialization"]').val(),
-                date_hired:        $('input[name="date_hired"]').val(),
-                employment_status: $('select[name="employment_status"]').val(),
+                employee_id:       $('input[name="employee_id"]').val()       || null,
+                department:        $('select[name="department"]').val()        || null,
+                position:          $('input[name="position"]').val()           || null,
+                specialization:    $('input[name="specialization"]').val()     || null,
+                date_hired:        $('input[name="date_hired"]').val()         || null,
+                employment_status: $('select[name="employment_status"]').val() || null,
             });
         } else {
             $.extend(formData, {
-                academic_year: $('select[name="academic_year"]').val(),
-                grade_level:   $('select[name="grade_level"]').val(),
-                section:       $('select[name="section"]').val(),
-                lrn:           $('input[name="lrn"]').val(),
+                academic_year: $('select[name="academic_year"]').val() || null,
+                grade_level:   $('select[name="grade_level"]').val()   || null,
+                section:       $('select[name="section"]').val()       || null,
+                lrn:           $('input[name="lrn"]').val()            || null,
             });
         }
 
@@ -261,7 +258,11 @@ $(document).ready(function () {
             success: function (response) {
                 $('#studentForm')[0].reset();
                 toggleUserTypeFields('2');
-                showPopup('Saved Successfully', response.message, 'success');
+                var msg = response.message;
+                if (response.generated_password) {
+                    msg += '\n\nDefault password: ' + response.generated_password;
+                }
+                showPopup('Saved Successfully', msg, 'success');
             },
 
             error: function (xhr) {
@@ -280,7 +281,6 @@ $(document).ready(function () {
             }
         });
     });
-
 });
 </script>
 

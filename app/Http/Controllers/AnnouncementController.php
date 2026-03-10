@@ -40,7 +40,7 @@ public function store(Request $request)
     ];
 
     $validated = $request->validate($rules);
-
+    $validated['user_id'] = auth()->id();
     try {
         DB::statement("CALL usp_sql_actions(?, ?)", [2, json_encode($validated)]);
     } catch (\Exception $e) {
@@ -59,7 +59,8 @@ public function store(Request $request)
 public function getAnnouncements()
 {
     try {
-        $data = DB::select("CALL usp_get_data(?, ?)", [3, null]);
+        $userId = auth()->id();
+        $data = DB::select("CALL usp_get_data(?, ?)", [3, $userId]);
 
         return response()->json([
             'status' => 'success',

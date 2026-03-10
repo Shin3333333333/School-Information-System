@@ -136,15 +136,23 @@ document.querySelectorAll('.login-role-btn input').forEach(radio => {
                     }
                     loadingModal.hide();
                 },
-                error: function(xhr, status, error) {
-                    loadingModal.hide();
-                    // Handle AJAX errors, such as network issues or server errors
-                    console.error("AJAX Error:", status, error);
-                    alert('An error occurred during login. Please try again.');
+                error: function(xhr) {
+                loadingModal.hide();
+                const res = xhr.responseJSON;
+                if (res && res.errors) {
+                    // Validation error — show the first message
+                    const firstError = Object.values(res.errors)[0][0];
+                    alert(firstError);
+                } else if (res && res.message) {
+                    alert(res.message);
+                } else {
+                    alert('An error occurred. Please try again.');
                 }
+            }
             });
         });
     });
+    
 </script>
 </body>
 </html>

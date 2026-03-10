@@ -1,6 +1,64 @@
+// ── Global Loading Modal Control ─────────────────────────────────────────────
+window.loadingModal = {
+    show: function() {
+        var el = document.getElementById('loading-modal');
+        if (el) el.classList.add('show');
+    },
+    hide: function() {
+        var el = document.getElementById('loading-modal');
+        if (el) el.classList.remove('show');
+    }
+};
+
 // ── Global Popup ──────────────────────────────────────────────────────────────
-function showPopup(title, message, type) {
+window.showPopup = function(title, message, type) {
     type = type || 'success';
+
+    if (!document.getElementById('popup-modal')) {
+        $('#sis-popup').remove();
+
+        var colors = {
+            success: { bg: '#dcfce7', border: '#16a34a', text: '#16a34a' },
+            warning: { bg: '#fef3c7', border: '#d97706', text: '#d97706' },
+            error:   { bg: '#fee2e2', border: '#dc2626', text: '#dc2626' },
+            info:    { bg: '#dbeafe', border: '#3b82f6', text: '#3b82f6' },
+        };
+        var icons = {
+            success: '<path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            warning: '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+            error:   '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+            info:    '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+        };
+        var c = colors[type] || colors.success;
+
+        var popup = $(
+            '<div id="sis-popup" style="' +
+                'position:fixed;top:24px;right:24px;z-index:9999;' +
+                'background:' + c.bg + ';' +
+                'border:1.5px solid ' + c.border + ';' +
+                'border-radius:10px;' +
+                'padding:14px 18px;' +
+                'min-width:280px;max-width:380px;' +
+                'box-shadow:0 4px 16px rgba(0,0,0,.10);' +
+                'display:flex;align-items:flex-start;gap:12px;' +
+                'animation:slideInRight .25s ease-out;' +
+            '">' +
+                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;margin-top:1px;color:' + c.text + '">' +
+                    icons[type] +
+                '</svg>' +
+                '<div style="flex:1;">' +
+                    '<div style="font-weight:700;font-size:13.5px;color:' + c.text + ';margin-bottom:3px;">' + title + '</div>' +
+                    '<div style="font-size:12.5px;color:#334155;white-space:pre-line;">' + message + '</div>' +
+                '</div>' +
+                '<button onclick="$(\'#sis-popup\').remove()" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:0;line-height:1;font-size:16px;">✕</button>' +
+            '</div>'
+        );
+
+        $('body').append(popup);
+        setTimeout(() => $('#sis-popup').fadeOut(300, function(){ $(this).remove(); }), 4000);
+        return;
+    }
+
     var config = {
         success: { icon: '✅', color: '#10b981' },
         error:   { icon: '❌', color: '#ef4444' },
@@ -13,7 +71,13 @@ function showPopup(title, message, type) {
     document.getElementById('popup-message').textContent      = message;
     document.getElementById('popup-box').style.borderTopColor = cfg.color;
     document.getElementById('popup-modal').style.display      = 'flex';
-}
+};
+
+// ── Slide-in animation ────────────────────────────────────────────────────────
+const style = document.createElement('style');
+style.textContent = '@keyframes slideInRight { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }';
+document.head.appendChild(style);
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // ── Active nav highlighting (client-side fallback) ────────────
@@ -37,15 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ── View toggle ──────────────
+    // ── View toggle ───────────────────────────────────────────────
     document.querySelectorAll('.view-toggle').forEach(group => {
         group.querySelectorAll('.vtog-btn').forEach(btn => {
             btn.addEventListener('click', function () {
                 group.querySelectorAll('.vtog-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
-
-                // Call setGender with the role name
-                let role = this.textContent.trim().toLowerCase(); 
+                let role = this.textContent.trim().toLowerCase();
                 setGender(this, role);
             });
         });
@@ -84,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ── Pagination buttons ──────────────────────────────────
+    // ── Pagination buttons ────────────────────────────────────────
     document.querySelectorAll('.page-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             if (this.textContent === '‹' || this.textContent === '›') return;
@@ -100,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => flash.remove(), 4000);
     }
 
-    // ── Form date validation ───────────────────────────────────────
+    // ── Form date validation ──────────────────────────────────────
     const fromDate = document.querySelector('input[name="from"], input[type="date"]:first-of-type');
     const toDate   = document.querySelector('input[name="to"], input[type="date"]:last-of-type');
     if (fromDate && toDate) {
@@ -114,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ── Highlighted row click ────────────────────────────
+    // ── Highlighted row click ─────────────────────────────────────
     document.querySelectorAll('.data-table tbody tr').forEach(row => {
         row.style.cursor = 'pointer';
         row.addEventListener('click', function () {
@@ -123,37 +185,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ── Global Loading Modal Control ──────────────────────────────
-    window.loadingModal = {
-        modalElement: document.getElementById('loading-modal'),
-
-        show: function() {
-            if (this.modalElement) {
-                this.modalElement.classList.add('show');
-            }
-        },
-
-        hide: function() {
-            if (this.modalElement) {
-                this.modalElement.classList.remove('show');
-            }
-        }
-    };
-
     // ── Page Transition Loading ───────────────────────────────────
     document.querySelectorAll('a').forEach(link => {
-        // Only apply to internal links, not those opening in a new tab or javascript handlers
         if (link.hostname === window.location.hostname && link.target !== '_blank' && !link.href.startsWith('javascript:')) {
             link.addEventListener('click', function(e) {
-                // Don't show for anchor links on the same page
-                if (this.pathname === window.location.pathname && this.hash) {
-                    return;
-                }
+                if (this.pathname === window.location.pathname && this.hash) return;
                 loadingModal.show();
             });
         }
     });
-  // ✅ Guard — only attach if the popup exists on this page
+
+    // ── Popup modal backdrop click to close ───────────────────────
     var popupModal = document.getElementById('popup-modal');
     if (popupModal) {
         popupModal.addEventListener('click', function (e) {

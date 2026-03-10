@@ -13,7 +13,7 @@ use App\Http\Controllers\AnnouncementController;
 Route::get('/', function () {
     return redirect()->route('login');
 });
-
+Route::post('login', [LoginController::class, 'ajaxLogin'])->name('login.submit');
 Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('login', [LoginController::class, 'login']);
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
