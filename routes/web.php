@@ -52,3 +52,23 @@ Route::prefix('teacher')->name('teacher.')->group(function () {
         return view('teacher.announcements'); 
     })->name('announcements'); 
 });
+
+
+/* 
+This group of routes is for the student module. 
+Includes dashboard, class schedule, and announcements pages. 
+*/ 
+
+Route::prefix('student')->name('student.')->group(function () { 
+    Route::get('/dashboard', function () { 
+        return view('student.dashboard'); 
+    })->name('dashboard'); 
+
+    Route::get('/class-schedule', function () { 
+        return view('student.class-schedule'); 
+    })->name('schedule'); 
+
+    Route::get('/announcements', function () { 
+        return view('student.announcements'); 
+    })->name('announcements'); 
+});
