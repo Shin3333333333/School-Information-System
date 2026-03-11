@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User; // Make sure your User model is in App\Models
+use App\Models\User;
 
 class LoginController extends Controller
 {
@@ -25,28 +25,24 @@ class LoginController extends Controller
         return view('auth.login');
     }
 
-    public function ajaxLogin(Request $request)
+    public function login(Request $request)
     {
         $credentials = $request->validate([
             'email'    => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ]);
 
-        $user = User::with('role')->where('email', $credentials['email'])->first();
-
-        if ($user && \Illuminate\Support\Facades\Hash::check($credentials['password'], $user->password)) {
-            Auth::login($user);
+        if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
-
-            $roleName = $user->role ? $user->role->name : null;
-            $request->session()->put('user_role', $roleName);
-
-            return response()->json(['success' => true, 'role' => $roleName]);
+            return redirect()->route('dashboard');
         }
 
-        return response()->json(['success' => false, 'message' => 'Invalid credentials'], 422);
+        return back()->withErrors([
+            'email' => 'Invalid credentials.',
+        ])->onlyInput('email');
     }
-        /**
+
+    /**
      * Log the user out of the application.
      */
     public function logout(Request $request)

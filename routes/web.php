@@ -13,11 +13,9 @@ use App\Http\Controllers\AnnouncementController;
 Route::get('/', function () {
     return redirect()->route('login');
 });
-Route::post('login', [LoginController::class, 'ajaxLogin'])->name('login.submit');
 Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('login', [LoginController::class, 'login']);
+Route::post('login', [LoginController::class, 'login'])->name('login.submit');
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
-Route::post('ajax-login', [LoginController::class, 'ajaxLogin'])->name('ajax.login');
 
 Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 
@@ -63,7 +61,7 @@ This group of routes is for the student module.
 Includes dashboard, class schedule, and announcements pages. 
 */ 
 
-Route::prefix('student')->name('student.')->group(function () { 
+Route::prefix('student')->name('student.')->middleware('auth')->group(function () { 
     Route::get('/dashboard', function () { 
         return view('student.dashboard'); 
     })->name('dashboard'); 

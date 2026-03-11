@@ -34,8 +34,8 @@
             </div>
             @endif
 
-            <form method="POST" action="{{ route('login') }}" class="login-form">
-                @csrf
+            <form method="POST" action="{{ route('login.submit') }}" class="login-form">
+            @csrf
 
                 <div class="login-field">
                     <label class="login-label">Email</label>
@@ -112,46 +112,7 @@ document.querySelectorAll('.login-role-btn input').forEach(radio => {
         radio.closest('.login-role-btn').classList.add('selected');
     });
 });
- $(document).ready(function() {
-        $.ajaxSetup({
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        }
-         });
-        $('.login-form').on('submit', function(e) {
-            loadingModal.show();
-            e.preventDefault(); // Prevent the default form submission
-
-            $.ajax({
-                url: '{{ route("ajax.login") }}', // The route that handles the login logic
-                method: 'POST',
-                data: $(this).serialize(), // Sends the form data (ID number and password)
-                success: function(response) {
-                    if (response.success) {
-                        // If login is successful, redirect to the dashboard
-                        window.location.href = '{{ route("dashboard") }}';
-                    } else {
-                        // If login fails, show an alert with the error message
-                        alert(response.message);
-                    }
-                    loadingModal.hide();
-                },
-                error: function(xhr) {
-                loadingModal.hide();
-                const res = xhr.responseJSON;
-                if (res && res.errors) {
-                    // Validation error — show the first message
-                    const firstError = Object.values(res.errors)[0][0];
-                    alert(firstError);
-                } else if (res && res.message) {
-                    alert(res.message);
-                } else {
-                    alert('An error occurred. Please try again.');
-                }
-            }
-            });
-        });
-    });
+ 
     
 </script>
 </body>
