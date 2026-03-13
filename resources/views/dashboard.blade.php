@@ -3,7 +3,7 @@
 @section('title', 'Dashboard — School Information System')
 
 @section('page-title')
-    <h2><span style="text-transform: capitalize;">{{ $userRole }}</span> Dashboard</h2>
+    <h2><span style="text-transform: capitalize;">{{ $roleName }}</span> Dashboard</h2>
 @endsection
 
 @section('content')
@@ -21,8 +21,8 @@
                 </svg>
             </div>
         </div>
-        <div class="stat-value">1,284</div>
-        <div class="stat-meta"><span>+12</span> new this month</div>
+        <div class="stat-value">{{ number_format($totalStudents) }}</div>
+        <div class="stat-meta"><span>+{{ $newThisMonth }}</span> new this month</div>
     </div>
 
     <div class="stat-card">
@@ -36,22 +36,23 @@
                 </svg>
             </div>
         </div>
-        <div class="stat-value">64</div>
-        <div class="stat-meta">Across <span>12</span> departments</div>
+        <div class="stat-value">{{ number_format($totalTeachers) }}</div>
+        <div class="stat-meta">Active faculty</div>
     </div>
 
     <div class="stat-card">
         <div class="stat-header">
-            <span class="stat-label">Classes Today</span>
+            <span class="stat-label">Total Users</span>
             <div class="stat-icon amber">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
-                    <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+                    <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </div>
         </div>
-        <div class="stat-value">48</div>
-        <div class="stat-meta"><span>3</span> cancelled, <span>2</span> rescheduled</div>
+        <div class="stat-value">{{ number_format($totalStudents + $totalTeachers) }}</div>
+        <div class="stat-meta">Students &amp; teachers</div>
     </div>
 </div>
 
@@ -62,27 +63,33 @@
         <div class="section-title" style="margin-bottom:14px;">Quick Actions</div>
         <div class="quick-actions-list">
             <a href="{{ route('students.create') }}" class="btn btn-primary" style="justify-content:center;">+ Add New User</a>
-            <a href="{{ route('grades.index') }}" class="btn btn-outline" style="justify-content:center;">Manage Users</a>
+            <a href="{{ route('students.index') }}" class="btn btn-outline" style="justify-content:center;">Manage Users</a>
             <a href="{{ route('enrollment.index') }}" class="btn btn-outline" style="justify-content:center;">Manage Information</a>
         </div>
     </div>
 
     <div class="card card-body dashboard-widget-card">
-        <div class="section-title" style="margin-bottom:14px;">Upcoming Events</div>
+        <div class="section-title" style="margin-bottom:14px;">Announcements</div>
         <div class="events-scroll">
-            @foreach([
-                ['Mar 28','Final Exams Begin','amber'],
-                ['Apr 02','Grade Submission Deadline','red'],
-                ['Apr 10','Enrollment Opening – SY 25-26','blue'],
-                ['Apr 15','Moving Up Ceremony','green'],
-            ] as $ev)
+            @php $colors = ['blue', 'amber', 'green', 'red']; @endphp
+            @forelse($upcomingEvents as $i => $ev)
             <div class="event-item">
-                <div class="event-date-badge {{ $ev[2] }}">
-                    {{ explode(' ',$ev[0])[0] }}<br>{{ explode(' ',$ev[0])[1] }}
+                <div class="event-date-badge {{ $colors[$i % count($colors)] }}">
+                    {{ \Carbon\Carbon::parse($ev->date_posted)->format('M') }}<br>
+                    {{ \Carbon\Carbon::parse($ev->date_posted)->format('d') }}
                 </div>
-                <span class="event-label">{{ $ev[1] }}</span>
+                <div>
+                    <span class="event-label">{{ $ev->title }}</span>
+                    <div style="font-size:12px; color:var(--gray-400); margin-top:2px;">
+                        {{ $ev->subject_name }} &mdash; {{ $ev->section_names }}
+                    </div>
+                </div>
             </div>
-            @endforeach
+            @empty
+            <div style="color:var(--gray-400); font-size:13px; text-align:center; padding:20px 0;">
+                No announcements found.
+            </div>
+            @endforelse
         </div>
     </div>
 

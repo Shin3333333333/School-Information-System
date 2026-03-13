@@ -47,7 +47,7 @@
         </div>
 
         <nav class="sidebar-nav">
-            @if(session('user_role') == 'Admin')
+           @if(auth()->user()->role->name === 'Admin')
             <span class="nav-section-label">MAIN</span>
 
             <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
@@ -69,14 +69,91 @@
                 </svg>
                 User Management
             </a>
-
-            <a href="{{ route('enrollment.index') }}" class="nav-item {{ request()->routeIs('enrollment.*') ? 'active' : '' }}">
+           
+            <a href="{{ route('admin.announcements') }}" class="nav-item {{ request()->routeIs('admin.announcements') ? 'active' : '' }}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                     <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.8"/>
                     <path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                 </svg>
                 Announcements
+            </a>
+
+            <a href="{{ route('admin.calendar') }}" class="nav-item {{ request()->routeIs('admin.calendar*') ? 'active' : '' }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+                    <path d="M12 6v2m0 8v2M8.5 9.5a3.5 1.5 0 0 1 7 0c0 .828-.597 1.57-1.5 2s-1.5 1.172-1.5 2a3.5 1.5 0 0 1-7 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                Calendar
+            </a>
+
+            <a href="{{ route('admin.policies') }}" class="nav-item {{ request()->routeIs('admin.policies*') ? 'active' : '' }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+                Policies
+            </a>
+             @elseif(auth()->user()->role->name === 'Teacher')
+             <span class="nav-section-label">MAIN</span>
+             <a href="{{ route('teacher.dashboard') }}" class="nav-item {{ request()->routeIs('teacher.dashboard') ? 'active' : '' }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                </svg>
+                Dashboard
+            </a>
+            <a href="{{ route('teacher.class-list') }}" class="nav-item {{ request()->routeIs('teacher.class-list') ? 'active' : '' }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <circle cx="9" cy="7" r="3" stroke="currentColor" stroke-width="1.8"/>
+                    <path d="M3 20c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M16 11c1.657 0 3-1.343 3-3s-1.343-3-3-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M21 20c0-3.314-2.239-6-5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                Class List
+            </a>
+             <a href="{{ route('teacher.announcements') }}" class="nav-item {{ request()->routeIs('teacher.announcements') ? 'active' : '' }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                    <path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                Announcements   
+            </a>
+
+            <a href="{{ route('fees.index') }}" class="nav-item {{ request()->routeIs('fees.*') ? 'active' : '' }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+                    <path d="M12 6v2m0 8v2M8.5 9.5a3.5 1.5 0 0 1 7 0c0 .828-.597 1.57-1.5 2s-1.5 1.172-1.5 2a3.5 1.5 0 0 1-7 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                Calendar
+            </a>
+
+            <a href="{{ route('grades.index') }}" class="nav-item {{ request()->routeIs('grades.*') ? 'active' : '' }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+                Policies
+            </a>
+            @else
+             <span class="nav-section-label">MAIN</span>
+             <a href="{{ route('student.dashboard') }}" class="nav-item {{ request()->routeIs('student.dashboard') ? 'active' : '' }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                </svg>
+                Dashboard
+            </a>
+             <a href="{{ route('student.announcements') }}" class="nav-item {{ request()->routeIs('students.announcements') ? 'active' : '' }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                    <path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                Announcements   
             </a>
 
             <a href="{{ route('fees.index') }}" class="nav-item {{ request()->routeIs('fees.*') ? 'active' : '' }}">
@@ -163,7 +240,8 @@
                     </svg>
                 </div>
                 <div>
-                    <div class="chat-title">{{ auth()->user()->name }}</div>                </div>
+                    <div class="chat-title">SIS Support</div>
+                </div>
             </div>
             <button class="chat-close-btn" onclick="toggleChatPanel()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">

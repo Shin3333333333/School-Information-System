@@ -2,14 +2,13 @@
 window.loadingModal = {
     show: function() {
         var el = document.getElementById('loading-modal');
-        if (el) el.classList.add('show');
+        if (el) el.style.display = 'flex';
     },
     hide: function() {
         var el = document.getElementById('loading-modal');
-        if (el) el.classList.remove('show');
+        if (el) el.style.display = 'none';
     }
 };
-
 // ── Global Popup ──────────────────────────────────────────────────────────────
 window.showPopup = function(title, message, type) {
     type = type || 'success';
@@ -33,7 +32,7 @@ window.showPopup = function(title, message, type) {
 
         var popup = $(
             '<div id="sis-popup" style="' +
-                'position:fixed;top:24px;right:24px;z-index:9999;' +
+                'position:fixed;top:24px;right:24px;z-index:99999;' + // was 9999
                 'background:' + c.bg + ';' +
                 'border:1.5px solid ' + c.border + ';' +
                 'border-radius:10px;' +
