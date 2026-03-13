@@ -106,7 +106,15 @@ class StudentController extends Controller
             'generated_password' => $rawPassword,
         ]);
     }
-
+public function getSections()
+{
+    try {
+        $sections = DB::select("CALL usp_populate_fields(?)", [2]); // MODE 2
+        return response()->json(['status' => 'success', 'data' => $sections]);
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+}
     public function show($id)
     {
         return view('students.show', ['studentId' => $id]);

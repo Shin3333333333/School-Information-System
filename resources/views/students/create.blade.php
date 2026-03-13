@@ -70,7 +70,7 @@
                 </div>
             </div>
 
-            {{-- User Type Selector (always visible) --}}
+            {{-- User Type Selector --}}
             <div>
                 <div class="form-section-divider">Placement & Role</div>
                 <div class="form-grid-3">
@@ -103,24 +103,33 @@
                             <option>2025–2026</option>
                         </select>
                     </div>
+
+                    {{-- Grade Level (dynamic) --}}
                     <div class="filter-group">
                         <span class="filter-label">Grade Level *</span>
-                        <select name="grade_level" class="form-select">
-                            <option value="">Select…</option>
-                            @for($g=7;$g<=12;$g++)
-                                <option>Grade {{ $g }}</option>
-                            @endfor
-                        </select>
+                        <div style="position:relative;">
+                            <select name="grade_level" id="gradeLevelSelect" class="form-select" disabled>
+                                <option value="">Loading…</option>
+                            </select>
+                            <span id="gradeLoader" style="position:absolute; right:10px; top:50%; transform:translateY(-50%);">
+                                <span class="loading loading-dots loading-sm" style="color:var(--gray-400);"></span>
+                            </span>
+                        </div>
                     </div>
+
+                    {{-- Section (dynamic, filtered by grade) --}}
                     <div class="filter-group">
                         <span class="filter-label">Section *</span>
-                        <select name="section" class="form-select">
-                            <option value="">Select…</option>
-                            <option>Section A</option>
-                            <option>Section B</option>
-                            <option>Section C</option>
-                        </select>
+                        <div style="position:relative;">
+                            <select name="section" id="sectionSelect" class="form-select" disabled>
+                                <option value="">Select grade level first…</option>
+                            </select>
+                            <span id="sectionLoader" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); display:none;">
+                                <span class="loading loading-dots loading-sm" style="color:var(--gray-400);"></span>
+                            </span>
+                        </div>
                     </div>
+
                     <div class="filter-group">
                         <span class="filter-label">LRN (DepEd)</span>
                         <input type="text" name="lrn" class="form-input" placeholder="12-digit number" maxlength="12">
@@ -188,9 +197,89 @@
 
 <script>
 $(document).ready(function () {
-    loadingModal.hide(); // ensure it's hidden on page load
+    loadingModal.hide();
 
-    // ── Toggle section visibility ─────────────────────────────────────────────
+    $.ajaxSetup({
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+    });
+
+    // ── Load Grade Levels ─────────────────────────────────────────────────────
+    function loadGradeLevels() {
+        const select = $('#gradeLevelSelect');
+        const loader = $('#gradeLoader');
+
+        select.prop('disabled', true);
+        loader.show();
+
+        $.ajax({
+            url:    '{{ route("fields.gradeLevels") }}',
+            method: 'GET',
+            success: function (response) {
+                select.empty().append('<option value="">Select grade level…</option>');
+                if (response.status === 'success' && response.data.length > 0) {
+                    $.each(response.data, function (i, grade) {
+                        select.append(`<option value="${grade.id}">${grade.grade_level_name}</option>`);
+                    });
+                    select.prop('disabled', false);
+                } else {
+                    select.append('<option value="">No grade levels found</option>');
+                }
+            },
+            error: function () {
+                select.html('<option value="">Error loading grades</option>');
+            },
+            complete: function () {
+                loader.hide();
+            }
+        });
+    }
+
+    // ── Load Sections by Grade Level ──────────────────────────────────────────
+    function loadSections(gradeLevelId) {
+        const select  = $('#sectionSelect');
+        const loader  = $('#sectionLoader');
+
+        select.prop('disabled', true).html('<option value="">Loading sections…</option>');
+        loader.show();
+
+        if (!gradeLevelId) {
+            select.html('<option value="">Select grade level first…</option>');
+            loader.hide();
+            return;
+        }
+
+        $.ajax({
+            url:    '{{ url("fields/sections") }}/' + gradeLevelId,
+            method: 'GET',
+            success: function (response) {
+                select.empty().append('<option value="">Select section…</option>');
+                if (response.status === 'success' && response.data.length > 0) {
+                    $.each(response.data, function (i, section) {
+                        select.append(`<option value="${section.id}">${section.section_name}</option>`);
+                    });
+                    select.prop('disabled', false);
+                } else {
+                    select.html('<option value="">No sections for this grade</option>');
+                }
+            },
+            error: function () {
+                select.html('<option value="">Error loading sections</option>');
+            },
+            complete: function () {
+                loader.hide();
+            }
+        });
+    }
+
+    // ── Trigger section reload when grade changes ─────────────────────────────
+    $('#gradeLevelSelect').on('change', function () {
+        loadSections($(this).val());
+    });
+
+    // ── Initial load ──────────────────────────────────────────────────────────
+    loadGradeLevels();
+
+    // ── Toggle student/teacher fields ─────────────────────────────────────────
     function toggleUserTypeFields(type) {
         var isTeacher = (type === '1');
         $('#studentFields').toggle(!isTeacher);
@@ -205,46 +294,41 @@ $(document).ready(function () {
         toggleUserTypeFields($(this).val());
     });
 
-    // ── AJAX setup ────────────────────────────────────────────────────────────
-    $.ajaxSetup({
-        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
-    });
-
     // ── Form submit ───────────────────────────────────────────────────────────
     $('#studentForm').on('submit', function (e) {
         e.preventDefault();
-        loadingModal.show(); // show ONLY on submit
+        loadingModal.show();
 
         var userType  = $('#userTypeSelect').val();
         var isTeacher = (userType === '1');
 
         var formData = {
-            last_name:    $('input[name="last_name"]').val()    || null,
-            first_name:   $('input[name="first_name"]').val()   || null,
-            middle_name:  $('input[name="middle_name"]').val()  || null,
-            dob:          $('input[name="dob"]').val()          || null,
-            sex:          $('select[name="sex"]').val()         || null,
-            civil_status: $('select[name="civil_status"]').val()|| null,
-            address:      $('input[name="address"]').val()      || null,
+            last_name:    $('input[name="last_name"]').val()     || null,
+            first_name:   $('input[name="first_name"]').val()    || null,
+            middle_name:  $('input[name="middle_name"]').val()   || null,
+            dob:          $('input[name="dob"]').val()           || null,
+            sex:          $('select[name="sex"]').val()          || null,
+            civil_status: $('select[name="civil_status"]').val() || null,
+            address:      $('input[name="address"]').val()       || null,
             student_type: userType,
-            contact:      $('input[name="contact"]').val()      || null,
-            email:        $('input[name="email"]').val()        || null,
+            contact:      $('input[name="contact"]').val()       || null,
+            email:        $('input[name="email"]').val()         || null,
         };
 
         if (isTeacher) {
             $.extend(formData, {
-                employee_id:       $('input[name="employee_id"]').val()       || null,
-                department:        $('select[name="department"]').val()        || null,
-                position:          $('input[name="position"]').val()           || null,
-                specialization:    $('input[name="specialization"]').val()     || null,
-                date_hired:        $('input[name="date_hired"]').val()         || null,
-                employment_status: $('select[name="employment_status"]').val() || null,
+                employee_id:       $('input[name="employee_id"]').val()        || null,
+                department:        $('select[name="department"]').val()         || null,
+                position:          $('input[name="position"]').val()            || null,
+                specialization:    $('input[name="specialization"]').val()      || null,
+                date_hired:        $('input[name="date_hired"]').val()          || null,
+                employment_status: $('select[name="employment_status"]').val()  || null,
             });
         } else {
             $.extend(formData, {
                 academic_year: $('select[name="academic_year"]').val() || null,
-                grade_level:   $('select[name="grade_level"]').val()   || null,
-                section:       $('select[name="section"]').val()       || null,
+                grade_level:   $('#gradeLevelSelect').val()            || null,
+                section:       $('#sectionSelect').val()               || null,
                 lrn:           $('input[name="lrn"]').val()            || null,
             });
         }
@@ -257,6 +341,9 @@ $(document).ready(function () {
 
             success: function (response) {
                 $('#studentForm')[0].reset();
+                // Reload grade levels and reset section after form reset
+                loadGradeLevels();
+                $('#sectionSelect').html('<option value="">Select grade level first…</option>').prop('disabled', true);
                 toggleUserTypeFields('2');
                 var msg = response.message;
                 if (response.generated_password) {

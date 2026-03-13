@@ -3,29 +3,44 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        // $stats = [
-        //     'total_students' => Student::count(),
-        //     'active_students' => Student::where('status', 'active')->count(),
-        //     'pending_fees' => Payment::where('status', 'unpaid')->count(),
-        //     'new_this_month' => Student::whereMonth('created_at', now()->month)->count(),
-        // ];
-        $userRole = session('user_role');
+        $user     = Auth::user();
+        $roleName = $user->role ? strtolower($user->role->name) : null;
 
-        switch ($userRole) {
-            case 'Admin':
-                return view('dashboard', ['userRole' => $userRole]);
-            case 'Teacher':
-                return view('teacher.dashboard', ['userRole' => $userRole]);
-            default:
-                Auth::logout();
-                request()->session()->invalidate();
-                request()->session()->regenerateToken();
-                return redirect()->route('login')->with('error', 'Invalid role. Please log in again.');
-        }
+        return match($roleName) {
+            'teacher' => redirect()->route('teacher.dashboard'),
+            'student' => redirect()->route('student.dashboard'),
+            'admin'   => $this->adminDashboard($roleName),
+            default   => redirect()->route('login')->with('error', 'Invalid role.'),
+        };
     }
+
+    private function adminDashboard($roleName)
+    {
+        $totalStudents = DB::table('users')->where('role_id', 2)->where('status', 'Active')->count();
+        $totalTeachers = DB::table('users')->where('role_id', 1)->where('status', 'Active')->count();
+        $newThisMonth  = DB::table('users')->where('role_id', 2)->where('status', 'Active')
+                            ->whereMonth('created_at', now()->month)
+                            ->whereYear('created_at', now()->year)
+                            ->count();
+
+        try {
+            $upcomingEvents = DB::select("CALL usp_get_data(?, ?)", [4, 0]);
+        } catch (\Exception $e) {
+            $upcomingEvents = [];
+        }
+
+        return view('dashboard', compact(
+            'roleName',
+            'totalStudents',
+            'totalTeachers',
+            'newThisMonth',
+            'upcomingEvents'
+        ));
+}
 }
