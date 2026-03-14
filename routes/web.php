@@ -11,13 +11,21 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\PoliciesController;
-
+use App\Http\Controllers\SectionController;
+// ── Add this import at the top of web.php ────────────────────────────────────
+use App\Http\Controllers\ScheduleController;
 // ── Admin Calendar ────────────────────────────────────────────────────────────
 Route::get('admin/calendar',         [CalendarController::class, 'index'])->name('admin.calendar');
 Route::get('admin/calendar/list',    [CalendarController::class, 'list'])->name('admin.calendar.list');
 Route::post('admin/calendar/store',  [CalendarController::class, 'store'])->name('admin.calendar.store');
 Route::post('admin/calendar/update', [CalendarController::class, 'update'])->name('admin.calendar.update');
 Route::post('admin/calendar/destroy',[CalendarController::class, 'destroy'])->name('admin.calendar.destroy');
+// ── Add these routes inside web.php ──────────────────────────────────────────
+Route::get('admin/sections',          [SectionController::class, 'index'])->name('admin.sections')->middleware('auth');
+Route::get('admin/sections/list',     [SectionController::class, 'list'])->name('admin.sections.list')->middleware('auth');
+Route::post('admin/sections/store',   [SectionController::class, 'store'])->name('admin.sections.store')->middleware('auth');
+Route::post('admin/sections/update',  [SectionController::class, 'update'])->name('admin.sections.update')->middleware('auth');
+Route::post('admin/sections/destroy', [SectionController::class, 'destroy'])->name('admin.sections.destroy')->middleware('auth');
 // Routes
 Route::get('admin/policies/info',         [PoliciesController::class, 'getInfo'])->name('admin.policies.info');
 Route::post('admin/policies/info/update', [PoliciesController::class, 'updateInfo'])->name('admin.policies.info.update');
@@ -27,6 +35,12 @@ Route::get('admin/policies/list',    [PoliciesController::class, 'list'])->name(
 Route::post('admin/policies/store',  [PoliciesController::class, 'store'])->name('admin.policies.store');
 Route::post('admin/policies/update', [PoliciesController::class, 'update'])->name('admin.policies.update');
 Route::post('admin/policies/destroy',[PoliciesController::class, 'destroy'])->name('admin.policies.destroy');
+// ── Add these routes inside web.php ──────────────────────────────────────────
+Route::get('admin/schedule',          [ScheduleController::class, 'index'])->name('admin.schedule')->middleware('auth');
+Route::get('admin/schedule/list',     [ScheduleController::class, 'list'])->name('admin.schedule.list')->middleware('auth');
+Route::post('admin/schedule/store',   [ScheduleController::class, 'store'])->name('admin.schedule.store')->middleware('auth');
+Route::post('admin/schedule/update',  [ScheduleController::class, 'update'])->name('admin.schedule.update')->middleware('auth');
+Route::post('admin/schedule/destroy', [ScheduleController::class, 'destroy'])->name('admin.schedule.destroy')->middleware('auth');
 // Routes for Login and Logout
 Route::get('/', function () {
     return redirect()->route('login');
@@ -100,3 +114,9 @@ Route::get('fields/subjects',              [PopulateFieldsController::class, 'ge
 Route::get('fields/sections',              [PopulateFieldsController::class, 'getSections'])->name('fields.sections');
 Route::get('fields/sections/{gradeLevel}', [PopulateFieldsController::class, 'getSectionsByGrade'])->name('fields.sections.byGrade');
 Route::get('fields/grade-levels',          [PopulateFieldsController::class, 'getGradeLevels'])->name('fields.gradeLevels');
+Route::get('fields/students-per-grade', [PopulateFieldsController::class, 'getStudentsPerGrade'])->name('fields.studentsPerGrade');
+
+use App\Http\Controllers\ChatController;
+
+Route::post('chat/send', [ChatController::class, 'send'])->name('chat.send');
+Route::post('/chat/clear', [ChatController::class, 'clearHistory'])->name('chat.clear');

@@ -1110,17 +1110,16 @@ html, body {
 }
 
 .chat-text {
-    background: var(--white);
-    padding: 10px 14px;
-    border-radius: 12px;
     font-size: 13.5px;
     line-height: 1.5;
     color: var(--gray-800);
-    box-shadow: var(--shadow-sm);
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
 }
 
 .chat-message.user .chat-text {
-    background: var(--blue-600);
+    background: transparent;
     color: var(--white);
 }
 
