@@ -21,8 +21,8 @@
                 </svg>
             </div>
         </div>
-        <div class="stat-value">1,284</div>
-        <div class="stat-meta"><span>+12</span> joined this month</div>
+        <div class="stat-value" id="total-users-stat">...</div>
+        <div class="stat-meta" id="total-users-meta">...</div>
     </div>
 
     <div class="stat-card">
@@ -35,8 +35,8 @@
                 </svg>
             </div>
         </div>
-        <div class="stat-value">1,198</div>
-        <div class="stat-meta"><span>93.3%</span> attendance rate</div>
+        <div class="stat-value" id="active-users-stat">...</div>
+        <div class="stat-meta" id="active-users-meta">...</div>
     </div>
 
     <div class="stat-card">
@@ -48,8 +48,8 @@
                 </svg>
             </div>
         </div>
-        <div class="stat-value">24</div>
-        <div class="stat-meta">Across <span>5</span> grade levels</div>
+        <div class="stat-value" id="new-this-month-stat">...</div>
+        <div class="stat-meta" id="new-this-month-meta">...</div>
     </div>
 </div>
 
@@ -168,7 +168,7 @@
 
     {{-- Pagination --}}
     <div class="pagination">
-        <span class="page-info">Showing 1–7 of 1,284 students</span>
+        <span class="page-info" id="pagination-info"></span>
         <div class="page-buttons">
             <button class="page-btn">‹</button>
             <button class="page-btn active">1</button>
@@ -214,6 +214,7 @@ function fetchStudents() {
 
             allStudents = response.data; // store globally
             renderStudents();
+            updateStatCards();
         },
         error: function(xhr) {
             let errorMsg = xhr.responseJSON ? xhr.responseJSON.message : "Fatal Error";
@@ -224,12 +225,41 @@ function fetchStudents() {
     });
 }
 
+function updateStatCards() {
+    const totalUsers = allStudents.length;
+    const activeUsers = allStudents.filter(s => s.status.toLowerCase() === 'active').length;
+    
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const newThisMonth = allStudents.filter(s => {
+        const createdAt = new Date(s.created_at);
+        return createdAt.getMonth() === currentMonth && createdAt.getFullYear() === currentYear;
+    }).length;
+
+    const activePercentage = totalUsers > 0 ? (activeUsers / totalUsers * 100).toFixed(1) : 0;
+
+    $('#total-users-stat').text(totalUsers.toLocaleString());
+    $('#total-users-meta').html(`<span>+${newThisMonth}</span> joined this month`);
+
+    $('#active-users-stat').text(activeUsers.toLocaleString());
+    $('#active-users-meta').html(`<span>${activePercentage}%</span> of users are active`);
+
+    $('#new-this-month-stat').text(newThisMonth);
+    $('#new-this-month-meta').text('new users this month');
+}
+
 function renderStudents() {
     let tbody = $('#student-table-body');
     tbody.empty();
 
+    const totalCount = allStudents.length;
+    const paginationInfo = $('#pagination-info');
+
     if (!allStudents || allStudents.length === 0) {
         tbody.append('<tr><td colspan="3" style="text-align:center;">No records found.</td></tr>');
+        paginationInfo.text('Showing 0–0 of 0 students');
         return;
     }
 
@@ -246,8 +276,11 @@ function renderStudents() {
         return isMatch;
     });
 
-    if (filtered.length === 0) {
+    const filteredCount = filtered.length;
+
+    if (filteredCount === 0) {
         tbody.append('<tr><td colspan="3" style="text-align:center;">No matching records.</td></tr>');
+        paginationInfo.text(`Showing 0–0 of ${totalCount} students`);
         return;
     }
 
@@ -286,6 +319,10 @@ function renderStudents() {
         `;
         tbody.append(row);
     });
+    
+    const start = filteredCount > 0 ? 1 : 0;
+    const end = filteredCount;
+    paginationInfo.text(`Showing ${start}–${end} of ${totalCount} students`);
 }
 </script>
 @endpush

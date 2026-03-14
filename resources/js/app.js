@@ -186,10 +186,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Page Transition Loading ───────────────────────────────────
     document.querySelectorAll('a').forEach(link => {
-        if (link.hostname === window.location.hostname && link.target !== '_blank' && !link.href.startsWith('javascript:')) {
+        if (link.hostname === window.location.hostname
+            && link.target !== '_blank'
+            && !link.href.startsWith('javascript:')
+            && !link.getAttribute('href')?.startsWith('#')
+            && link.getAttribute('href') !== null
+            && link.getAttribute('href') !== ''
+        ) {
             link.addEventListener('click', function(e) {
-                if (this.pathname === window.location.pathname && this.hash) return;
-                loadingModal.show();
+                if (this.pathname !== window.location.pathname) {
+                    loadingModal.show();
+                }
             });
         }
     });
