@@ -14,6 +14,7 @@ use App\Http\Controllers\PoliciesController;
 use App\Http\Controllers\SectionController;
 // ── Add this import at the top of web.php ────────────────────────────────────
 use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\PopulateFieldsController;
 // ── Admin Calendar ────────────────────────────────────────────────────────────
 Route::get('admin/calendar',         [CalendarController::class, 'index'])->name('admin.calendar');
 Route::get('admin/calendar/list',    [CalendarController::class, 'list'])->name('admin.calendar.list');
@@ -28,13 +29,16 @@ Route::post('admin/sections/update',  [SectionController::class, 'update'])->nam
 Route::post('admin/sections/destroy', [SectionController::class, 'destroy'])->name('admin.sections.destroy')->middleware('auth');
 // Routes
 Route::get('admin/policies/info',         [PoliciesController::class, 'getInfo'])->name('admin.policies.info');
+Route::get('policies/info',         [PoliciesController::class, 'getInfo'])->name('policies.info');
 Route::post('admin/policies/info/update', [PoliciesController::class, 'updateInfo'])->name('admin.policies.info.update');
 // ── Admin Policies ────────────────────────────────────────────────────────────
 Route::get('admin/policies',         [PoliciesController::class, 'index'])->name('admin.policies');
 Route::get('admin/policies/list',    [PoliciesController::class, 'list'])->name('admin.policies.list');
+Route::get('policies/list',    [PoliciesController::class, 'list'])->name('policies.list');
 Route::post('admin/policies/store',  [PoliciesController::class, 'store'])->name('admin.policies.store');
 Route::post('admin/policies/update', [PoliciesController::class, 'update'])->name('admin.policies.update');
 Route::post('admin/policies/destroy',[PoliciesController::class, 'destroy'])->name('admin.policies.destroy');
+
 // ── Add these routes inside web.php ──────────────────────────────────────────
 Route::get('admin/schedule',          [ScheduleController::class, 'index'])->name('admin.schedule')->middleware('auth');
 Route::get('admin/schedule/list',     [ScheduleController::class, 'list'])->name('admin.schedule.list')->middleware('auth');
@@ -69,7 +73,7 @@ Includes dashboard, class list, and announcements pages.
 
 Route::prefix('teacher')->name('teacher.')->group(function () { 
     Route::get('/dashboard', function () { 
-        return view('teacher.dashboard'); 
+        return view('dashboard'); 
     })->name('dashboard'); 
 
 
@@ -79,8 +83,16 @@ Route::prefix('teacher')->name('teacher.')->group(function () {
 
 
     Route::get('/announcements', function () { 
-        return view('teacher.announcements'); 
+        return view('announcements'); 
     })->name('announcements'); 
+
+    Route::get('/calendar', function () { 
+        return view('calendar'); 
+    })->name('calendar'); 
+
+    Route::get('/policies', function () { 
+        return view('policies'); 
+    })->name('policies'); 
     
 });
 Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
@@ -96,18 +108,18 @@ Includes dashboard, class schedule, and announcements pages.
 
 Route::prefix('student')->name('student.')->middleware('auth')->group(function () { 
     Route::get('/dashboard', function () { 
-        return view('student.dashboard'); 
+        return view('dashboard'); 
     })->name('dashboard'); 
 
     Route::get('/class-schedule', function () { 
-        return view('student.class-schedule'); 
+        return view('class-schedule'); 
     })->name('schedule'); 
 
     Route::get('/announcements', function () { 
-        return view('student.announcements'); 
+        return view('announcements'); 
     })->name('announcements'); 
 });
-use App\Http\Controllers\PopulateFieldsController;
+
 
 // Populate Fields (shared across pages)
 Route::get('fields/subjects',              [PopulateFieldsController::class, 'getSubjects'])->name('fields.subjects');
@@ -120,3 +132,9 @@ use App\Http\Controllers\ChatController;
 
 Route::post('chat/send', [ChatController::class, 'send'])->name('chat.send');
 Route::post('/chat/clear', [ChatController::class, 'clearHistory'])->name('chat.clear');
+use App\Http\Controllers\AcademicYearController;
+
+Route::get('academic-years',             [AcademicYearController::class, 'index'])->name('academic-years.index')->middleware('auth');
+Route::post('academic-years/set-active', [AcademicYearController::class, 'setActive'])->name('academic-years.setActive')->middleware('auth');
+Route::post('academic-years/store',      [AcademicYearController::class, 'store'])->name('academic-years.store')->middleware('auth');
+Route::post('academic-years/destroy',    [AcademicYearController::class, 'destroy'])->name('academic-years.destroy')->middleware('auth');

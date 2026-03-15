@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -322,7 +322,7 @@
                 </svg>
                 Schedule
             </a>
-            <a href="{{ route('admin.announcements') }}" class="nav-item {{ request()->routeIs('admin.announcements') ? 'active' : '' }}">
+            <a href="{{ route('admin.announcements') }}" class="nav-item {{ request()->routeIs('announcements') ? 'active' : '' }}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                     <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.8"/>
@@ -331,7 +331,7 @@
                 Announcements
             </a>
 
-            <a href="{{ route('admin.calendar') }}" class="nav-item {{ request()->routeIs('admin.calendar*') ? 'active' : '' }}">
+            <a href="{{ route('admin.calendar') }}" class="nav-item {{ request()->routeIs('calendar*') ? 'active' : '' }}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
                     <path d="M12 6v2m0 8v2M8.5 9.5a3.5 1.5 0 0 1 7 0c0 .828-.597 1.57-1.5 2s-1.5 1.172-1.5 2a3.5 1.5 0 0 1-7 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
@@ -339,7 +339,7 @@
                 Calendar
             </a>
 
-            <a href="{{ route('admin.policies') }}" class="nav-item {{ request()->routeIs('admin.policies*') ? 'active' : '' }}">
+            <a href="{{ route('admin.policies') }}" class="nav-item {{ request()->routeIs('policies*') ? 'active' : '' }}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
                 </svg>
@@ -376,14 +376,14 @@
                 </svg>
                 Announcements
             </a>
-            <a href="{{ route('fees.index') }}" class="nav-item {{ request()->routeIs('fees.*') ? 'active' : '' }}">
+            <a href="{{ route('teacher.calendar') }}" class="nav-item {{ request()->routeIs('teacher.calendar') ? 'active' : '' }}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
                     <path d="M12 6v2m0 8v2M8.5 9.5a3.5 1.5 0 0 1 7 0c0 .828-.597 1.57-1.5 2s-1.5 1.172-1.5 2a3.5 1.5 0 0 1-7 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                 </svg>
                 Calendar
             </a>
-            <a href="{{ route('grades.index') }}" class="nav-item {{ request()->routeIs('grades.*') ? 'active' : '' }}">
+            <a href="{{ route('teacher.policies') }}" class="nav-item {{ request()->routeIs('teacher.policies') ? 'active' : '' }}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
                 </svg>
@@ -401,7 +401,7 @@
                 </svg>
                 Dashboard
             </a>
-            <a href="{{ route('student.announcements') }}" class="nav-item {{ request()->routeIs('students.announcements') ? 'active' : '' }}">
+            <a href="{{ route('student.announcements') }}" class="nav-item {{ request()->routeIs('student.announcements') ? 'active' : '' }}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                     <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.8"/>

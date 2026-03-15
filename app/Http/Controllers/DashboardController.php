@@ -33,7 +33,7 @@ class DashboardController extends Controller
                             ->where('status', 'Active')
                             ->count();
 
-        $newThisMonth  = DB::table('users')
+        $newThisMonth = DB::table('users')
                             ->where('role_id', 2)
                             ->where('status', 'Active')
                             ->whereMonth('created_at', now()->month)
@@ -47,12 +47,9 @@ class DashboardController extends Controller
                             ->whereYear('created_at', now()->year)
                             ->count();
 
-        $totalSections = DB::table('section')->count();
-
-        $totalAnnouncements = DB::table('announcements')->count();
-
-        $totalEvents = DB::table('events')->count();
-
+        $totalSections       = DB::table('section')->count();
+        $totalAnnouncements  = DB::table('announcements')->count();
+        $totalEvents         = DB::table('events')->count();
         $totalActivePolicies = DB::table('policies')->where('status', 'Active')->count();
 
         // ── Students per Grade Level ──────────────────────────────────────────
@@ -72,7 +69,7 @@ class DashboardController extends Controller
             $studentsPerGrade = collect();
         }
 
-        // ── Upcoming Announcements ────────────────────────────────────────────
+        // ── Recent Announcements ──────────────────────────────────────────────
         try {
             $upcomingEvents = DB::select("CALL usp_get_data(?, ?)", [4, 0]);
         } catch (\Exception $e) {
@@ -99,10 +96,10 @@ class DashboardController extends Controller
                         ->get();
         } catch (\Exception $e) {
             $recentUsers = collect();
-            $users = collect();
+            $users       = collect();
         }
 
-        // ── Enrollments per Month (last 6 months) ─────────────────────────────
+        // ── Enrollment Trend (last 6 months) ──────────────────────────────────
         try {
             $enrollmentTrend = DB::table('users')
                                     ->where('role_id', 2)

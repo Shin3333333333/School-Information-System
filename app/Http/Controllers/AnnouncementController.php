@@ -199,6 +199,6 @@ public function getAllAnnouncements()
 }
 public function adminIndex()
 {
-    return view('admin.announcements');
+    return view('announcements');
 }
 }
