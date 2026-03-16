@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 15, 2026 at 12:29 AM
+-- Generation Time: Mar 16, 2026 at 01:04 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.3.26
 
@@ -202,6 +202,150 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `usp_get_data` (IN `MODE` INT, IN `U
         JOIN   grade_level    gl  ON gl.id  = sch.grade_level_id
         ORDER BY FIELD(sch.day,'Monday','Tuesday','Wednesday','Thursday','Friday'), sch.time_start;
     END IF;
+     -- MODE 10: All grades — Admin
+    IF MODE = 10
+    THEN
+        SELECT      g.id
+                   ,g.student_id
+                   ,CONCAT(ud.fname, ' ', ud.lname)  AS student_name
+                   ,g.subject_id
+                   ,sub.subject_name
+                   ,g.section_id
+                   ,sec.section_name
+                   ,g.grade_level_id
+                   ,gl.grade_level_name
+                   ,g.quarter
+                   ,g.grade
+                   ,g.remarks
+                   ,g.created_at
+                   ,g.updated_at
+        FROM        grades g
+        JOIN        users          u   ON  u.id    = g.student_id
+        JOIN        user_details   ud  ON  ud.id   = u.details_id
+        JOIN        subject        sub ON  sub.id  = g.subject_id
+        JOIN        section        sec ON  sec.id  = g.section_id
+        JOIN        grade_level    gl  ON  gl.id   = g.grade_level_id
+        ORDER BY    gl.id ASC, sec.section_name ASC, ud.lname ASC, ud.fname ASC, g.quarter ASC;
+    END IF;
+ 
+    -- MODE 11: Teacher's grades — scoped to sections they handle via schedule
+    -- U_ID = teacher's user id (passed as the second SP parameter)
+    IF MODE = 11
+    THEN
+        SELECT      g.id
+                   ,g.student_id
+                   ,CONCAT(ud.fname, ' ', ud.lname)  AS student_name
+                   ,g.subject_id
+                   ,sub.subject_name
+                   ,g.section_id
+                   ,sec.section_name
+                   ,g.grade_level_id
+                   ,gl.grade_level_name
+                   ,g.quarter
+                   ,g.grade
+                   ,g.remarks
+                   ,g.created_at
+                   ,g.updated_at
+        FROM        grades g
+        JOIN        users          u   ON  u.id    = g.student_id
+        JOIN        user_details   ud  ON  ud.id   = u.details_id
+        JOIN        subject        sub ON  sub.id  = g.subject_id
+        JOIN        section        sec ON  sec.id  = g.section_id
+        JOIN        grade_level    gl  ON  gl.id   = g.grade_level_id
+        WHERE       g.section_id IN (
+                        SELECT DISTINCT section_id
+                        FROM   schedule
+                        WHERE  user_id = U_ID
+                    )
+        ORDER BY    gl.id ASC, sec.section_name ASC, ud.lname ASC, ud.fname ASC, g.quarter ASC;
+    END IF;
+ 
+    -- MODE 12: Student's own grades — scoped to their user id
+    -- U_ID = student's user id (passed as the second SP parameter)
+    IF MODE = 12
+    THEN
+        SELECT      g.id
+                   ,g.student_id
+                   ,g.subject_id
+                   ,sub.subject_name
+                   ,g.section_id
+                   ,sec.section_name
+                   ,g.grade_level_id
+                   ,gl.grade_level_name
+                   ,g.quarter
+                   ,g.grade
+                   ,g.remarks
+                   ,g.created_at
+        FROM        grades g
+        JOIN        subject     sub ON  sub.id  = g.subject_id
+        JOIN        section     sec ON  sec.id  = g.section_id
+        JOIN        grade_level gl  ON  gl.id   = g.grade_level_id
+        WHERE       g.student_id = U_ID
+        ORDER BY    g.quarter ASC, sub.subject_name ASC;
+    END IF;
+      IF MODE = 13
+    THEN
+        SELECT
+             sch.subject_id
+            ,sub.subject_name
+            ,sch.section_id
+            ,sec.section_name
+            ,gl.grade_level_name
+            ,sch.day
+            ,TIME_FORMAT(sch.time_start, '%h:%i %p') AS time_start
+            ,TIME_FORMAT(sch.time_end,   '%h:%i %p') AS time_end
+            ,sch.room
+            -- Count active students enrolled in this section
+            ,(
+                SELECT COUNT(*)
+                FROM   users u2
+                JOIN   user_details ud2 ON ud2.id = u2.details_id
+                WHERE  u2.role_id     = 2
+                  AND  u2.status      = 'Active'
+                  AND  ud2.section_id = sch.section_id
+            ) AS student_count
+        FROM   schedule sch
+        JOIN   subject      sub ON sub.id  = sch.subject_id
+        JOIN   section      sec ON sec.id  = sch.section_id
+        JOIN   grade_level  gl  ON gl.id   = sch.grade_level_id
+        WHERE  sch.user_id = U_ID
+        ORDER BY
+            sub.subject_name ASC,
+            FIELD(sch.day, 'Monday','Tuesday','Wednesday','Thursday','Friday'),
+            sch.time_start ASC;
+    END IF;
+ 
+-- =============================================================================
+-- MODE 14: Students enrolled in a specific section
+--          U_ID = section_id (second SP parameter)
+-- =============================================================================
+ 
+    IF MODE = 14
+    THEN
+        SELECT
+             u.id
+            ,CONCAT(ud.lname, ', ', ud.fname,
+                    IF(ud.mname IS NOT NULL AND ud.mname != '',
+                       CONCAT(' ', LEFT(ud.mname, 1), '.'), '')
+             ) AS student_name
+            ,ud.fname
+            ,ud.lname
+            ,ud.mname
+            ,ud.student_no   AS lrn
+            ,ud.sex
+            ,u.status
+            ,ud.section_id
+            ,sec.section_name
+            ,gl.grade_level_name
+        FROM   users        u
+        JOIN   user_details ud  ON ud.id             = u.details_id
+        JOIN   section      sec ON sec.id            = ud.section_id
+        JOIN   grade_level  gl  ON gl.id             = sec.grade_level_id
+        WHERE  u.role_id    = 2
+          AND  u.status     = 'Active'
+          AND  ud.section_id = U_ID
+        ORDER BY ud.lname ASC, ud.fname ASC;
+    END IF;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `usp_populate_fields` (IN `MODE` INT, IN `p_grade_level` INT)   BEGIN
@@ -256,6 +400,21 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `usp_populate_fields` (IN `MODE` INT
         GROUP BY    gl.id, gl.grade_level_name
         ORDER BY    gl.id;
 END IF;
+-- MODE 6: Active students enrolled in a specific section
+    -- p_grade_level is reused here as the section_id context value
+    IF MODE = 6
+    THEN
+        SELECT      u.id
+                   ,CONCAT(ud.fname, ' ', ud.lname) AS student_name
+                   ,ud.fname
+                   ,ud.lname
+        FROM        users        u
+        JOIN        user_details ud  ON  ud.id           = u.details_id
+        WHERE       u.role_id   = 2              -- student role
+          AND       u.status    = 'Active'
+          AND       ud.section_id = p_grade_level -- p_grade_level carries section_id
+        ORDER BY    ud.lname ASC, ud.fname ASC;
+    END IF;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `usp_sql_actions` (IN `MODE` INT, IN `p_json` JSON)   BEGIN
@@ -628,6 +787,129 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `usp_sql_actions` (IN `MODE` INT, IN
             WHERE id = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.id')) AS UNSIGNED);
         END IF;
       COMMIT;
+      -- MODE 15: Insert Grade
+        IF MODE = 15
+        THEN
+            -- Prevent duplicate entry for same student + subject + quarter
+            IF EXISTS (
+                SELECT 1 FROM grades
+                WHERE  student_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.student_id')) AS UNSIGNED)
+                AND    subject_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.subject_id')) AS UNSIGNED)
+                AND    quarter    = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.quarter'))    AS UNSIGNED)
+            ) THEN
+                SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'A grade record for this student, subject and quarter already exists.';
+            END IF;
+ 
+            INSERT INTO grades (
+                 student_id
+                ,subject_id
+                ,section_id
+                ,grade_level_id
+                ,quarter
+                ,grade
+                ,remarks
+                ,encoded_by
+                ,created_at
+                ,updated_at
+            )
+            VALUES (
+                 CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.student_id'))     AS UNSIGNED)
+                ,CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.subject_id'))     AS UNSIGNED)
+                ,CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.section_id'))     AS UNSIGNED)
+                ,CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.grade_level_id')) AS UNSIGNED)
+                ,CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.quarter'))        AS UNSIGNED)
+                ,JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.grade'))
+                ,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.remarks')), '')
+                ,CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.encoded_by'))     AS UNSIGNED)
+                ,NOW()
+                ,NOW()
+            );
+        END IF;
+ 
+        -- MODE 16: Update Grade
+        IF MODE = 16
+        THEN
+            -- Prevent duplicate when changing student/subject/quarter combination
+            IF EXISTS (
+                SELECT 1 FROM grades
+                WHERE  student_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.student_id')) AS UNSIGNED)
+                AND    subject_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.subject_id')) AS UNSIGNED)
+                AND    quarter    = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.quarter'))    AS UNSIGNED)
+                AND    id        != CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.id'))         AS UNSIGNED)
+            ) THEN
+                SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'A grade record for this student, subject and quarter already exists.';
+            END IF;
+ 
+            UPDATE  grades
+            SET     student_id     = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.student_id'))     AS UNSIGNED)
+                   ,subject_id     = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.subject_id'))     AS UNSIGNED)
+                   ,section_id     = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.section_id'))     AS UNSIGNED)
+                   ,grade_level_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.grade_level_id')) AS UNSIGNED)
+                   ,quarter        = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.quarter'))        AS UNSIGNED)
+                   ,grade          = JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.grade'))
+                   ,remarks        = NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.remarks')), '')
+                   ,updated_by     = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.updated_by'))     AS UNSIGNED)
+                   ,updated_at     = NOW()
+            WHERE   id             = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.id'))             AS UNSIGNED);
+        END IF;
+ 
+        -- MODE 17: Delete Grade
+        IF MODE = 17
+        THEN
+            DELETE FROM grades
+            WHERE id = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.id')) AS UNSIGNED);
+        END IF;
+         -- MODE 18: Insert Subject
+        IF MODE = 18
+        THEN
+            IF EXISTS (
+                SELECT 1 FROM subject
+                WHERE subject_name = JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.subject_name'))
+            ) THEN
+                SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'A subject with this name already exists.';
+            END IF;
+ 
+            INSERT INTO subject (subject_name)
+            VALUES (JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.subject_name')));
+        END IF;
+ 
+        -- MODE 19: Update Subject
+        IF MODE = 19
+        THEN
+            IF EXISTS (
+                SELECT 1 FROM subject
+                WHERE subject_name = JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.subject_name'))
+                AND   id          != CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.id')) AS UNSIGNED)
+            ) THEN
+                SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'A subject with this name already exists.';
+            END IF;
+ 
+            UPDATE subject
+            SET    subject_name = JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.subject_name'))
+            WHERE  id           = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.id')) AS UNSIGNED);
+        END IF;
+ 
+        -- MODE 20: Delete Subject
+        IF MODE = 20
+        THEN
+            -- Prevent deletion if the subject is still linked to grades or schedule
+            IF EXISTS (SELECT 1 FROM grades   WHERE subject_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.id')) AS UNSIGNED)) THEN
+                SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'Cannot delete — this subject has existing grade records.';
+            END IF;
+ 
+            IF EXISTS (SELECT 1 FROM schedule WHERE subject_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.id')) AS UNSIGNED)) THEN
+                SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'Cannot delete — this subject is assigned to an active schedule.';
+            END IF;
+ 
+            DELETE FROM subject
+            WHERE id = CAST(JSON_UNQUOTE(JSON_EXTRACT(p_json, '$.id')) AS UNSIGNED);
+        END IF;
 END$$
 
 DELIMITER ;
@@ -675,8 +957,6 @@ CREATE TABLE `announcements` (
 --
 
 INSERT INTO `announcements` (`id`, `title`, `date_posted`, `description`, `section_id`, `subject_id`, `user_id`) VALUES
-(1, 'Hey', '2026-03-08', 'asdasdas', 0, 1, 0),
-(2, 'sdfsdf', '2026-03-08', 'sdfsdfsd', 0, 2, 0),
 (13, 'Preliminary Exams', '2026-03-12', 'Upcoming exam on March 14-15', 0, 2, 14),
 (14, 'Math Long Quiz', '2026-03-12', 'Nyark', 0, 1, 14),
 (20, 'asdsa', '2026-03-13', 'asdda', 0, 1, 14),
@@ -770,6 +1050,35 @@ CREATE TABLE `failed_jobs` (
   `exception` longtext NOT NULL,
   `failed_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `grades`
+--
+
+CREATE TABLE `grades` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `student_id` int(10) UNSIGNED NOT NULL,
+  `subject_id` int(10) UNSIGNED NOT NULL,
+  `section_id` int(10) UNSIGNED NOT NULL,
+  `grade_level_id` int(10) UNSIGNED NOT NULL,
+  `quarter` tinyint(3) UNSIGNED NOT NULL COMMENT '1 = Q1 … 4 = Q4',
+  `grade` decimal(5,2) NOT NULL COMMENT '60.00 – 100.00',
+  `remarks` varchar(255) DEFAULT NULL,
+  `encoded_by` int(10) UNSIGNED DEFAULT NULL COMMENT 'user_id of admin/teacher who entered the grade',
+  `updated_by` int(10) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `grades`
+--
+
+INSERT INTO `grades` (`id`, `student_id`, `subject_id`, `section_id`, `grade_level_id`, `quarter`, `grade`, `remarks`, `encoded_by`, `updated_by`, `created_at`, `updated_at`) VALUES
+(1, 17, 1, 5, 2, 1, 100.00, 'Galing tangina?', 1, 1, '2026-03-15 17:13:46', '2026-03-15 17:20:52'),
+(2, 17, 2, 5, 2, 1, 100.00, 'Galing tangina?', 1, NULL, '2026-03-15 17:42:27', '2026-03-15 17:42:27');
 
 -- --------------------------------------------------------
 
@@ -923,7 +1232,8 @@ CREATE TABLE `schedule` (
 --
 
 INSERT INTO `schedule` (`id`, `subject_id`, `section_id`, `day`, `time_start`, `time_end`, `room`, `user_id`, `grade_level_id`, `created_at`) VALUES
-(1, 1, 3, 'Monday', '08:00:00', '12:00:00', '101', 14, 2, '2026-03-14 20:12:11');
+(1, 1, 3, 'Monday', '08:00:00', '12:00:00', '101', 14, 2, '2026-03-14 20:12:11'),
+(3, 3, 9, 'Monday', '17:00:00', '20:00:00', '103', 14, 1, '2026-03-15 17:41:56');
 
 -- --------------------------------------------------------
 
@@ -993,14 +1303,7 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
-('QaYI3Ejugg3JOtmtMXwuIvhPmF2fbEVOQTgHX4Ua', 16, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 'ZXlKcGRpSTZJbXRhWVRGWllXRlJMMGR4T0hNeWMyUnZTbEkzUjBFOVBTSXNJblpoYkhWbElqb2lkeTh3TDBwMGVrSnJPVFZPWWl0aFprNU9NSGxNUlc5TWNqSllWMkoxWnpaQmJtNW1NelZTY1U1RlQwZzVhR2Q2UjJKQ05XZHRNMjkxVG5ocmNUbGpSRGt5Y2tGQ1IzZExRME12TmxGQk0ycHVPRkkyWjIwd1lUSXpUbEJRVEcxcEszTXhLM0pwUkhaSlowdGlNV2R1U1VZeFpGcE9jaXNyVkV0RmJXOXFXWGQ1ZVhoQldFZGtSVWt2WjBoaFUyNUhlVVZPY25wWUwwWjVUVlIxZFdFd1VtRnFPR05IV0hWd1JGcDBkM2t6YkVSSVIyUXZWMHA2T1VkYVJYVnFiV2hOUldaQ1IwMXJRakZNWjJGVE1FVkpVbXRhWmtZcmRXNDFTWFZETlRkTWVrOVFlWEpFVjFwNmVqZzBkM0ZOVXpJMVVtTnZja2cwZFRWeFFqTlJieXRUUjNkck9IQjFOMWRxZEZBdmMwMVBUbEkzVVU0clVURnpjMGhLZVVsdk5ISTJOVVJzU1V4V2JFUnBUVEl3UlZsb1lsVTNhSEJMVVhGTlQyeE9WRkV4V25kMU1WSnpkM2h6VFZSYVlWaHFNRXg1ZG5KV2JreDRTV1JwWkRGTE9Dc3pVR2Q0UVVGRk5WVmhVMnBrUkd4UGEycEJaazV1TkhobFlsVk1PV1ZPVm10SlQxRnViR05DVWtOelNWbEViSEZwYnpWS1R6aEtSRVoyYVVWVGVtbDFRalY1YVdrd1dWQTRiMnhzT0QwaUxDSnRZV01pT2lJMFpqZ3paamRrTURRMk5EQmlNVFEwWmpJeVlUbGhPVFkyTWpJeU1ETmpNbVZpWWpVeE1EbGlZVEUyWkRKbE9HRTBPVEZtTkRrek5UZGpORGxoTW1NNUlpd2lkR0ZuSWpvaUluMD0=', 1773533819),
-('RpD3oBawmOG6lkN2ZIFiro0BiV5KYP2MERQy7ndR', 14, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 'ZXlKcGRpSTZJbkpGVkdRemNWVkRiU3RKTlV4SmVrbG9ZM2hYY0djOVBTSXNJblpoYkhWbElqb2lPRFJaZGxjeFJERXJSMVVyYWtOWE5FUlFTbmxHYWpKRWVVRlVUVWRVYTJsYVRXeDBiVGN3ZFRSRU1HbHFVMmhwV2s0NFJIZE1lVUl6V1UxSFVuWkNNalIzVFhocFRteE9ZbWhLWmtSQk9URjROVUZsUkRRMldqVkxOa2hhYkdOb1oyazNjR1ZpT0N0WlZtcDFWVzVDTTBoUlFsUkRRVEJJTUZKeGJrMXFSWEJ0Tkd4eldTdFBWVTVtZVhSUFRVeEZWR0pFTkhnd2J5czRRa2Q1V2pCdWFYSktkbVJhVUN0SU4yNU9WalF5TkV4SFpGcElOR3c0TUVwRWJIVmhSbWxNVnpSaGVXSmhVbW96TW10b2JtWlVOV2gyYkhCbmFUSm9hamhJYURkRGQybFNkalEwZUVWak5IZE1OVlZZV1hKRWEycE5NRGxJTlRseEwwSTJUMjFtZEVOaVlrdHdaVEkyYWtGSmRrOUVhRXh2TDNsaloyeDNaMU5KT1U1MEx6TllVRmhVZWtGdVpUbEpNbE1yUW14T1NqSlpaV0k1ZVRrd2NHMTNibWt2UW5WdWVsa3ZLemhzU2xkQ2JXMHdhSGRhUWtkbFVHOVhRMUEwZUdWdk5VOHpRbmdyY0RWSU5IUjNaVXBWZUhZd1J6WlhRWGg0Y2tVNFJrVTBUVzFSTDJSd2JEUnpSa2M1UWsxRFQxWkVOakIwYkhwTlJuRlhTMVV3TnpjeVJrdzVWakZJUjFreFF6QkNkMHN4WnowaUxDSnRZV01pT2lJNU9XTmtZVEpsT0RWaE5XSmhaR00yWTJSaU9XUXlOamt5T0RnNFlURTBabVZpWVdSbU1EYzVNekE1TTJNME0yTXdaalZtT1RNeE1qTm1aRFEzTTJJeklpd2lkR0ZuSWpvaUluMD0=', 1773529276),
-('VjAr00UNvQ955PiaewUBOn2qDnQ6btcXUPKWl3bg', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 'ZXlKcGRpSTZJbEI1Y0daNWRIWTRkWFZKWnpGa05HTnFiRE5ZYm1jOVBTSXNJblpoYkhWbElqb2lRV1pOU1dNelJHRmxWbk5ZZWpsMVoyVm5ZbWhXVTFSSFJ6VTVjVmRhVUU0M2MyNXJkeXRDVkcxRFNrTjRZa2hYZWxwQ1ZFRTFZbXd2YVU0clQzTXZjRkpuWTJKTVdFcDZia0pLYmpSbVpGazFiRE5yVHpoVGIwZDZabU01ZEhSdWNWb3ZOWGhZZGpoc1FtdzViV1JJUWk5SVVYWlBZMUI1TnpOSE0xUldaRlpzT0dwdU1UQm9VME41YmpabVduVnNWQ3RLTWxsR09YYzBkVmhzY201dlFXd3daaXQ1Tm0xR2FUVjRXakZuYTNwVmMyTldjM05uVWtrNVQxcG1aMDV6YlZFM2NHRnFiMnAyZVU1eFNrSXhLMVZ2WW10Sk4wSXZZa2N3Tm1oUGJYcDNLekpCVW5GVVducG9VSHA2VlhKd2NHeDZRV3g2VDFSallWWm5UMVk1ZGtGeGNWZ3lZWHBRZVU1b1FUaFFkM000YzJ0cVJuQkpORXgyZDNSbGVtWlRZM1ppY2xKUVlVaElkSFJDWTBsWlFYVjVabHBOY25oT1VHZFhTME5VUlRCM1ZIcDVVbGRxY0ZRM2NHNVlla1V3VkhSTWEySTFhWGt5ZWxkS2NIUTFSR3hDTW14bGJFTnZWMmRWVmpSalEwSlVhSFZEU2tnM1NGQkhhV0Y0ZVZCNVpGTmFOWEJHZFVSVWJrNXdNM0JtVUVGRk4zWjFlR1p1YVhjNFdXcGxTRE42YUZOV2VsYzJWVWhsZEM5WGMyRm5Ta056WkU1MmJVcDFZMmxwZEVGQmRGQjBVRU5TYkdaVWRIVnVaSFoyY0dVdlVWQnpURTAzVnpaVU1HUTJNMGd6Wkd4UlQxcG1Ua3RXWkUwOUlpd2liV0ZqSWpvaU5qUXlOVGxpTXpBeE5qRTJNalJqTnpSbU56Z3lOREUwTjJVMFlXTTNOamt3WWpnd1l6TXpZalV6WlRJek9XTmlNVEl5TWpoa04yUmtOelF6WkRReE5pSXNJblJoWnlJNklpSjk=', 1773531122),
-('ySpW5HfPjy31FgbyZNdTVXpVzGspmEbOaWxYMinV', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 'ZXlKcGRpSTZJbVV4Y25aYU5IZHpOM2hTY1hwSFptbFhha1JyZFZFOVBTSXNJblpoYkhWbElqb2lSUzl4Tm1wYVdVMVNXVWRTYlc1bVJuWkpVWE41VkVJMFowbHdXazV6VFVJMVRXb3ZkWG93TmxaRU1qVmxVbGxvUW5wMlVHNVdWV0UzWTBOWVRYZENkWGs0SzFKaVpVcHJjRWR6Vm5sa09YSmFRMlJKTUVjeFFteENNRmhpYkUxQmExaFJkMVEzWWpjM2RGZDZLMHRKTDFKRFVtdFljREJMT0haUllXRTVURU5CZUZKQlVFdG1iVTVHZUVRMWVIRm1kREpJYm1NMU4xa3hPVFpYY0ZaTFNWVTVVelF3Y0hsRk5sTXJWMnhhSzFoTlkwMW9hSHBYZUhadE1tTllaRXhaVDIxaVNYbE5OVEJ5V1hWaWRGZzNRVlJEWkdka2FXeDNkR1k0ZW1kWllYVlRPRkZvWW1SNk5rcElOREphTkdSc2VFSm9TWEZwUW5SU2FFNHhWVzk0WW5kVmVtOXFaMGR6T1dkRk5XVldZazlMWmtWSGFFbEhWbEJHUkV0d2NVSnBhelFyVG5GalFrVXlhREpFTVVGM1lpczBRMFpCY1ZnMU5tSnpOamxXVmxkdU5WUTNSV2RSUkU5TmNGbEVRVU5UUVZoWk9XRkNVRFZ0V2xSM1FVaFZXVlUzZWxONmF6SkhjVmhvVlVGUmRGb3piazR4ZGtveGNVVmtiV1UwWjFGMFMwMTNZV3haV2poTVQxcFNjMEZHT0cxTFZUZHFRVDA5SWl3aWJXRmpJam9pTVRVMk1UVm1ZV0kyTnpGbU1UWTBNRGt5WW1Oak9UYzFOR014TldObVlXWmpabVJqTnpabU1EUXdPVEl5T1dJd016bGhNVE5tWWpKbU1HSmlZMk5sT1NJc0luUmhaeUk2SWlKOQ==', 1773531209),
-('ZeaXO2wKotalZSizzOIVVpiq0BZI8EBmRosg6SkJ', 14, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 'ZXlKcGRpSTZJbFJ1U0ZjMVpGaE5UMHBMU3paVWJXSkJhMkpMVm1jOVBTSXNJblpoYkhWbElqb2lZM3BHVUU4eGFTOXFLekJxVm1sTGVITnhVWFZHT1U5U1NrbzRNRzQ0T1VOUGVscE5OVlZxZG1Sa1NVUlFUbmxwVFN0cmIzUXZXUzl3ZUdWNFRXWTRlRVpOWmtwd05IVTVUR0ZCWkVkaFdtbEplbXhpY1RaS1pGQnRiRlpsTmtWR0wwUTNkRTVJSzNOYVFUZDNiMFpFVDFsUU9FOWxhMkZLVlZWaFMzcDVSblF2WjFodU9IUm1jbGh4VDIxbVNXSktjSFZXS3pVMGJYcENiRFZpZDNOWksyTnhkU3RJYm1VelVUVmFZbWxFUkdONVRteGhkMlk1VGxWeU1WaFBPVGQyZFZSQk5Fa3lTemx4UWpaeU5VTnRTVkpsTldrMmIyZ3pRVXhHZERNMWEwZHJVMGMwVXpSdVQzVnZWamt4VWpoVGFsaENkRmxyYlZsU1pUVlhNa2M0Ym1JNVNITjVUWGRsYTFJd01qbExSR0kzWW5STmFGYzBlR1JOWjNoMVExWkNXalpSY3pWbE5uSk5NVEI1T0RWeFMxcFRLMDFCTDNORlYzVldla05TYjA4ek9FaEViM2hzYzFSeGRuaENibEo1TVVSaE9XNTVibFp5VERkcFNFWkRiRTEzYlRodVJGVTViMk0wU0Znd1Fua3JlV05XY0U1UEwwNUxPSFV6WVZRM2VtVkplSFZpVml0WVdXNU5XVGxLVTJwUVdpdDFVVDA5SWl3aWJXRmpJam9pWWpGaU4ySTJNamM1TURKaVkyWm1ZamxqTmprM1pHRmpZVEZtT0RRM016a3lPVFl4WlRjM1ptUTNObUkzWlRBMFpqQmlabUZrTkRJMllUVmpPRFl4TXlJc0luUmhaeUk2SWlKOQ==', 1773530921),
-('zfMjw1SlAg8kjeTxk7vLfDWhv54BGGZqFm4fODRw', 14, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 'ZXlKcGRpSTZJbTlFZGtKUVkzUndhRGswT1cxUlFsWjNabWx0TTNjOVBTSXNJblpoYkhWbElqb2lWVEEyUlhWVlZVMXZUalJtVm1rcmFUZElSelpxYW1JMk5FOUZNV1ZHVlcxSmJrMVVNVWwyUkZaQlVqWkZObnBsT1VGRWRVNUZRVWhoUVhSeE5FOWpNRUowWTFwTWVVUmxRbWxHWWxkM1RYa3hjakl3Y0V4WVpqZGpZVk5ETldwRFlqbDVTMGxIT1ZwS05FOVRTa1J6ZGs1VE1scE1MM2hpTm1GTlltODVNemhKWmtOUlFUaHFaSGt6UTFaTVpYcHZTalowWWtoRFVHNTNNR0k0Vm5OeGJtTk9VV2RDYXpsa1FUaEZXRGczVUhkRlIweDBUbmhUU0RKSmRETmhSQ3Q2UVVsUFl6ZHJNVzR3YmtOc05qUTBOR1J2VDJsWE1pOTJhRmxPYjIxUWFtMWtSSHAyYjFOcVZVSlBieTlTVVN0NVlrNHlPRVpwWWpCd2JYTTJVR1JKYkd0WUsxcE5aelJWZERSQ2FIWmhieTloTVZWalN5OUdNbnBUWjJKM1dUWjFPU3R3UjBWdVlrUldiVXR1UjJOVFRGRlllRVZxWTBWMVZHMXBTMFozUWxsaWVUZHBWVkp3V0U4MlJUbGthVmhDVEhZMmVHeFRNa1p4WjBoMk1taG5TMlZNV1ZwdFFXNVliMVpUVm5KbWREVXlaVmxQU3pOUFUwdFhaRWhWWnpsd01HTTRRMmMyTkhjNEswSXhXazFoWmxablVVbDBlVFpuWTBoRE0wSjRaMUY2WnpCcmEwcEhSa2w2ZUU5b1ZuWXZkbEJGTVdoRFpscFlUVEYzUlc5b05taE1aRFJLTUhwU01YSnRhbVZTY25vd1kwODFORGhxVVU5bVFYZG5NR0pCWjNwUVdHNHhlRWhyUWtFOUlpd2liV0ZqSWpvaU16STNNbVUwTUdFd1l6WTFZV1poTVdNNE1HWTFNV1l4Tm1ZMFpEWmtaREkyTmpFM1lqaGpOemhoTURabVlXWXhPVFkxWVdZek1UTTJOekJoTVdKbU55SXNJblJoWnlJNklpSjk=', 1773531207),
-('ZRoa21k8TY5hcZzS6YqxFHeNjvTG7w8ztjGrLPCC', 14, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 'ZXlKcGRpSTZJbmgyYVM5VVVHODBOV3cwVmxCRk4wTnZVWEUzVEZFOVBTSXNJblpoYkhWbElqb2liRGxETlUxTk1taG9VMVJxZG14dVZsZHdXRXMxTjJwVlFWTnpOMjAxTkM5QlZHVTBOSFJuVXk5S01uQjJiQ3RFYmxjMmR6bHVZa3hTUmxCUGVrbGFUMHBDUVRONmEycE1lbmc1SzNCRFJHVnNkMHdyV1RCS1QzcGxjWHBaWjBSNFJreEJORWRCVm5KWlZtTkNZa0ZJVkVZMkwxQm5hRGdyUVhKVEszQkhhM051TmpGTFFtb3dZMkkyVVdKV1YwOTBjRmxUVWpWVlZVVkJUMmRHU3pCMWJ6TkpVbVJFTURCT2VqbHFaRVpVT1dkQmJtZDJaVFJUWjBkVmFGUkxjbGRSZUhaRmVHOVlVbVo1T1hwc2N5dFZaMlJ3YlZKNVdUSkZOMWRqTW5SV01ISnNWWGhWWTAxeGNsQjZjRFZvUW5sS1JIZFROWGxXTlhKUVdXUnRiWEJzVUVOR2RuVnBZelpFV0VKSWIyZENXbkpXYjFSWFNXRTJPWFZuUzJwcU1YUXZkVUU1Ympaa1prTmhiWE01YjFkMVFWTTBWakV4TkZOTmFFNDJXREppTWtKUVl6VXhLM0ZETkZSbVUzazJabTFsYzJGeGN6ZHllakYzVURKaWFWQlZSbnBYWTJkWlYzVlRXSFJWVmtsdWNrSkVkQzlPZWpRMlQwVk5hemxRVm05eVdtVXhSR0o1TVdWbU56TTJVVUV6YVVaVVZHeHNWbGhzU0NzdlQzQjVjR1YzU2xZd2NFTk5URVV2YldaRWRVdE1SMnQ2V20xSVdscGlOVFZpUjJnM2RYbFZRbWRKZFM5bE0zcFFaRk5YYkVOdGIySldObk5xYmt4NVNqSjRlSFE1WmpSWVNtVXpNRWREZEVFOUlpd2liV0ZqSWpvaVpUYzVZbUptWlRoaU9UY3pNbUZtWW1NNVpUZGpOREEyT1RNMU56Z3lOVE5rWVRJMFlUQTJZVE0yTkRFNVptSmxNV1JpTmpSa01EUmlZekU1WldJd1pDSXNJblJoWnlJNklpSjk=', 1773530967),
-('zzeeHtebbiHPpKOR9aRplStuFpcPPHdtaHTiB0cN', 14, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 'ZXlKcGRpSTZJbE16Ukhsa1FuQjRMMjVKVEUwcmNrVnZTVEp6T0djOVBTSXNJblpoYkhWbElqb2lWbXN5Y25GQlVYUk5jRmwzU0dkMlQwWlRUMVYzTWk5RGJVdzRZblYwUm0xMFdVcEtURTByUW1oSFlqTk9kWHBCVTNvck5XOTBWRVV3TkVRNE9ESldTRFU0ZWxGdFV6WlVjREZrWXpWUmVHNHJjR0pZWWsxUGFXVlhiRGRrWm5Oa2JsTXZRM28xYWxveVp5OUllazl2WWtsS04wSnFhR05WUlZSVFpWRjJaRTg1YUdsUlVtb3dRbTVzSzJSUE16VlhUME00YlVsRWIyUmFUR0ZzY0VncmIyMWtiamhZUkhsM2IyVnVUMGQ0YTBOblIweGpTWEF3Y1VGdWNsVjZkSFY1VDFkMlltOHlia0ZUYkVka2QzWnNNRXRTVlRka2EzVnBVRGhHTTJnNVMzVjRRaTl3WVU5U2RWWlhabFJEWTA1a1RtaEJPRXBxU0RFMU5FWTJOV2RyYXpoR2RFNDBVMFZVU1VadVVXd3djVVpPTUd4TU9XMXdXbFUxSzI1SU5GTlVabWw2VVRkeVJuTkZjamhMUkRZeU5uYzJaV2RoTHpSVloySkRTVmxxV214YVZTdFlTbEZvVVVKSFUyZFlVV2N4YUM5VE5FUjZSVUZOTUZsNmNsQmxXbTlPTlc0MVJpdG1TMVZRYzBZeU5tdzFjMjh5VHpjeVZFVmFNazVYVFhOa1pISm9TRE5STkRFeGFHSndRMHBOVTFoM1N6TkJlSEYwYm5kTFoySllSV0ZKYWxsNWEydFFabkpaTUQwaUxDSnRZV01pT2lKaU5qaG1NakEwT0dRM056SmhPV1JtTVRVM016UXhOekkxTURrME4yWXpNRGcwTnpZd01XSmlNakJrTldJM05XVmtaRGhqTUdGbE1qa3haVGMyWVRjMElpd2lkR0ZuSWpvaUluMD0=', 1773531066);
+('Pj6wUsPviW0G0qYUR4dQOiQzoaiXV7kJSfrRoKG9', 14, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 'ZXlKcGRpSTZJbVZPYW1FMVlqY3JSMGN6Ym10RlowdHhkbVF2VjJjOVBTSXNJblpoYkhWbElqb2lkbTlDT1U1dmJWcG9XVmsyYlRscVJWVjBUbFJCY2k5TWRtWlRPSHByUkhkMGR6Y3ZXWG95TUVkUWJUUkliakZ2UVdOcWVUZG5OR3hrVGtsVlltWnFPUzl0WTJOemRFVnJRVTlNVkVscFVFZEVkak5DWVhjM2NXVllRWE4xZGs1bFNtTXJaV1pGWlZGR2FEUXZiVU5SUVdsM1FqVlRMMk5zVlZsNlZXeG1jVWROUzBkeFYwUkRkQzluSzB4NVExZDBabkp1YWtsMkt6UkhXbk4yUTBscGFWZHZaVVZEUlhSNGVGTTFhbmR3TVcxbFIyRndkSGhsUzNsdGFrdzBTMmMyU1RSSE1FZEhTV2sxV1hOT2NsZDFkMHhFVUZCMVJGaFFSMGhxYmxwcmR6UnNMMDB3YkVwYVZqSTBObmhhTUVKdk9XRnZTRWd5ZFdjMVVVUnJRMU5EYW1sSmVUZFpkMWRqVDA1VFVpOUZZMGcxVUd0aWNrZHlhRVJvYlVzdmQyRlVXa1Z6UjJsMlYzTlFjVmhvVkhBNVVHOTJSV3hNVDJORVVUa3hUbE5ZVVZVeVdXVkxUR2cwV0c5UWNVTmlRelU0ZERJNFJrMDROMkkwVjJZME0zSmhZV1JQYzFvdlYySnZjelZwY3pJdlQzbzVabTUxVUhoRk5rMHJkSEZpUzJsRWRIRlNOV2xrYUZGaFptYzJValY1UkhKSGRHdEdXbWhRU2tsSE9GZHFibmxzU0hOUU1EQlRhMEprZVc0M2NrZFBZWEV4UlZnd00xQllhSHBuTHpGQk1qWXlkRUZXVDNodkswOXNTbkVyTlZKd1lYSXhSbEJOWVZwU2MwSjFkMkpYUzJwVldVMXNPR05vYm13eFVsSlRNMmRCTmpSck9FY3ZlRWN3T1hZck5UWXhhQ3RMTjB4c1ZVVmlZVlJDVUM5WFUyRnljelpuUFQwaUxDSnRZV01pT2lKbE1ETTNNelk0WVRrellUWm1OekF4TW1SaE5qSTRZbU01T0RZeVpHWmxNREF5TlRWaFlUUmhNemt5WVRCaU5EVTVNREptWkRWbE1UQTJZMkZrTW1SaElpd2lkR0ZuSWpvaUluMD0=', 1773623272);
 
 -- --------------------------------------------------------
 
@@ -1019,7 +1322,8 @@ CREATE TABLE `subject` (
 
 INSERT INTO `subject` (`id`, `subject_name`) VALUES
 (1, 'Math'),
-(2, 'Science');
+(2, 'Science'),
+(3, 'English');
 
 -- --------------------------------------------------------
 
@@ -1083,17 +1387,9 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `email`, `email_verified_at`, `password`, `remember_token`, `created_at`, `updated_at`, `details_id`, `role_id`, `status`) VALUES
-(1, 'Test User', 'test@example.com', '2026-03-03 09:38:11', '$2y$12$7RurItqie1M03.17Vlsvdupn0qIKtNj9/u4XbZHfF4OKFuy0xIPIa', 'gdjuPFVrmuacQer9zc0Cb2ZjkOZItuLz6YsmrkOAbQ1Bl9N1hErMPmIwWzgp', '2026-03-03 09:38:12', '2026-03-03 09:38:12', 0, 3, 'Active'),
+(1, 'Test User', 'test@example.com', '2026-03-03 09:38:11', '$2y$12$7RurItqie1M03.17Vlsvdupn0qIKtNj9/u4XbZHfF4OKFuy0xIPIa', 'YZwGsu3TuK82JNZba5nK3L29lWCREQEzWKkPZbgnJrxCYvJusjWHTPSzOjty', '2026-03-03 09:38:12', '2026-03-03 09:38:12', 0, 3, 'Active'),
 (2, 'Student User', 'student@example.com', '2026-03-03 14:39:50', '$2y$12$LygRec/4Mpd02V46NdNUeOxYefQfcMiBFo7N6oNQrVX/WDpXHYi5i', 'upABd3lKb0c4k7stxNr9jwLvovvWz2BbktwMzYJnee0LzXvUzNJPyD00ugL7', '2026-03-03 14:39:50', '2026-03-03 14:39:50', 0, 1, 'Active'),
-(3, 'Archelle Agdon', 'amapagdon@gmail.com', '2026-03-04 11:29:21', '', NULL, '2026-03-04 11:29:21', '2026-03-04 11:29:21', 1, 2, 'Active'),
-(4, 'Sean Carlo Hermoso', 'hermososeancarlo@gmail.com', '2026-03-08 05:22:00', '', NULL, '2026-03-08 05:22:00', '2026-03-08 05:22:00', 1, 1, 'Active'),
-(5, 'Jhon Edduard Balibay', 'jhonbalibs@gmail.com', '2026-03-08 05:26:22', '', NULL, '2026-03-08 05:26:22', '2026-03-08 05:26:22', 2, 1, 'Active'),
-(6, 'Melvin Abarrientos', 'melvin@gmail.com', '2026-03-08 05:47:36', '', NULL, '2026-03-08 05:47:36', '2026-03-08 05:47:36', 3, 1, 'Active'),
-(11, 'ssssdds uhihhkhjk', 'user@gmail.com', '2026-03-08 12:00:29', '', NULL, '2026-03-08 12:00:29', '2026-03-08 12:00:29', 8, 1, 'Active'),
-(12, 'Karl Randel Alenzuela', 'karl@gmail.com', '2026-03-08 12:11:38', '', NULL, '2026-03-08 12:11:38', '2026-03-08 12:11:38', 9, 1, 'Active'),
-(13, 'Robin Christian Tagalog', 'robin@gmail.com', '2026-03-10 14:00:03', '', NULL, '2026-03-10 14:00:03', '2026-03-10 14:00:03', 10, 1, 'Active'),
 (14, 'John Conrad Baliong', 'JCB@gmail.com', '2026-03-10 14:23:07', '$2y$12$s7ctx83Bd9FzZkTJMajriuOeCi0oBciN4qiE4g909nGcAhUW.hn1.', NULL, '2026-03-10 14:23:07', '2026-03-10 14:23:07', 29, 1, 'Active'),
-(15, 'user student', 'student1@example.com', '2026-03-11 17:41:50', '$2y$12$dqdMYeKFtJejXPKCNPpCVu6.6vt2aKcOCyUlW11CvG9DkgwC2MCES', NULL, '2026-03-11 17:41:50', '2026-03-11 17:41:50', 2, 2, 'Active'),
 (16, 'Kristin Chine Calip', 'kcc@gmail.com', '2026-03-13 14:58:27', '$2y$12$2RxiGO86V6wozvkfFdzxOupnas4I2RjQcdTBWMckBMPDixo724rHa', NULL, '2026-03-13 14:58:27', '2026-03-13 14:58:27', 3, 2, 'Active'),
 (17, 'Bienvinido James Publico', 'bienvenido.publico@cdsp.edu.ph', '2026-03-14 21:00:29', '$2y$12$PfEEj78cz6dmsYK.3LNIiOJGl7BjKtQBQExQUurt3McmfYGXrEbgi', NULL, '2026-03-14 21:00:29', '2026-03-14 21:00:29', 4, 2, 'Active');
 
@@ -1177,6 +1473,13 @@ ALTER TABLE `events`
 ALTER TABLE `failed_jobs`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`);
+
+--
+-- Indexes for table `grades`
+--
+ALTER TABLE `grades`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_grade_entry` (`student_id`,`subject_id`,`quarter`);
 
 --
 -- Indexes for table `grade_level`
@@ -1309,6 +1612,12 @@ ALTER TABLE `failed_jobs`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `grades`
+--
+ALTER TABLE `grades`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `grade_level`
 --
 ALTER TABLE `grade_level`
@@ -1342,7 +1651,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `schedule`
 --
 ALTER TABLE `schedule`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `school_info`
@@ -1360,7 +1669,7 @@ ALTER TABLE `section`
 -- AUTO_INCREMENT for table `subject`
 --
 ALTER TABLE `subject`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `teacher_details`

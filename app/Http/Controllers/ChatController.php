@@ -12,22 +12,58 @@ class ChatController extends Controller
     // ── Max turns to keep in session memory ──────────────────────────────────
     private const MAX_HISTORY = 10;
 
-    // ── Route map for admin navigation links ─────────────────────────────────
-    private array $adminRoutes = [
-        'dashboard'       => ['url' => '/dashboard',           'label' => 'Dashboard'],
-        'user management' => ['url' => '/students',            'label' => 'User Management'],
-        'students'        => ['url' => '/students',            'label' => 'User Management'],
-        'announcements'   => ['url' => '/admin/announcements', 'label' => 'Announcements'],
-        'calendar'        => ['url' => '/admin/calendar',      'label' => 'Calendar'],
-        'events'          => ['url' => '/admin/calendar',      'label' => 'Calendar'],
-        'policies'        => ['url' => '/admin/policies',      'label' => 'Policies'],
-        'school info'     => ['url' => '/admin/policies',      'label' => 'Policies & School Info'],
-        'mission'         => ['url' => '/admin/policies',      'label' => 'Policies & School Info'],
-        'vision'          => ['url' => '/admin/policies',      'label' => 'Policies & School Info'],
-    ];
+    // ── Route map based on user role ─────────────────────────────────────────
+   // ── Route map based on user role ─────────────────────────────────────────
+private function getRoutesByRole(string $role): array
+{
+    if ($role === 'Admin') {
+        return [
+            'dashboard'       => ['url' => '/dashboard',           'label' => 'Dashboard'],
+            'user management' => ['url' => '/students',            'label' => 'User Management'],
+            'students'        => ['url' => '/students',            'label' => 'User Management'],
+            'announcements'   => ['url' => '/admin/announcements', 'label' => 'Announcements'],
+            'calendar'        => ['url' => '/admin/calendar',      'label' => 'Calendar'],
+            'events'          => ['url' => '/admin/calendar',      'label' => 'Calendar'],
+            'policies'        => ['url' => '/admin/policies',      'label' => 'Policies'],
+            'school info'     => ['url' => '/admin/policies',      'label' => 'Policies & School Info'],
+            'mission'         => ['url' => '/admin/policies',      'label' => 'Policies & School Info'],
+            'vision'          => ['url' => '/admin/policies',      'label' => 'Policies & School Info'],
+            'sections'        => ['url' => '/admin/sections',      'label' => 'Sections'],
+            'subjects'        => ['url' => '/admin/subjects',      'label' => 'Subjects'],
+            'schedule'        => ['url' => '/admin/schedule',      'label' => 'Schedule Management'],
+            'academic years'  => ['url' => '/academic-years',      'label' => 'Academic Years'],
+        ];
+    } elseif ($role === 'Teacher') {
+        return [
+            'dashboard'       => ['url' => '/dashboard',           'label' => 'Dashboard'],
+            'my schedule'     => ['url' => '/teacher/schedule',    'label' => 'My Schedule'],
+            'schedule'        => ['url' => '/teacher/schedule',    'label' => 'My Schedule'],
+            'announcements'   => ['url' => '/announcements',       'label' => 'Announcements'],
+            'class list'      => ['url' => '/teacher/class-list',  'label' => 'Class List'],
+            'my classes'      => ['url' => '/teacher/class-list',  'label' => 'Class List'],
+            'grades'          => ['url' => '/grades',              'label' => 'Grades'],
+            'calendar'        => ['url' => '/teacher/calendar',    'label' => 'Calendar'],
+            'events'          => ['url' => '/teacher/calendar',    'label' => 'Calendar'],
+            'policies'        => ['url' => '/teacher/policies',    'label' => 'Policies'],
+            'school info'     => ['url' => '/teacher/policies',    'label' => 'Policies & School Info'],
+        ];
+    } else { // Student
+        return [
+            'dashboard'       => ['url' => '/dashboard',           'label' => 'Dashboard'],
+            'my schedule'     => ['url' => '/student/schedule',    'label' => 'My Schedule'],
+            'schedule'        => ['url' => '/student/schedule',    'label' => 'My Schedule'],
+            'announcements'   => ['url' => '/announcements',       'label' => 'Announcements'],
+            'my grades'       => ['url' => '/grades',              'label' => 'My Grades'],
+            'grades'          => ['url' => '/grades',              'label' => 'My Grades'],
+            'calendar'        => ['url' => '/student/calendar',    'label' => 'Calendar'],
+            'events'          => ['url' => '/student/calendar',    'label' => 'Calendar'],
+            'policies'        => ['url' => '/student/policies',    'label' => 'Policies'],
+            'school info'     => ['url' => '/student/policies',    'label' => 'Policies & School Info'],
+        ];
+    }
+}
 
     // ── Intent definitions: each intent has weighted keyword groups ───────────
-    // Score = sum of matched keyword weights. Highest score wins.
     private array $intents = [
         'profile' => [
             'keywords' => [
@@ -97,12 +133,28 @@ class ChatController extends Controller
             ],
             'min_score' => 2,
         ],
+        'subjects' => [
+            'keywords' => [
+                'show subjects' => 3, 'list subjects' => 3, 'all subjects' => 3,
+                'my subjects' => 3, 'what subjects' => 3, 'available subjects' => 3,
+                'subject' => 1, 'subjects' => 1,
+            ],
+            'min_score' => 2,
+        ],
         'school_info' => [
             'keywords' => [
                 'school info' => 3, 'school information' => 3, 'about the school' => 3,
                 'mission vision' => 3, 'core values' => 3,
                 'mission' => 2, 'vision' => 2, 'values' => 2,
                 'school motto' => 2, 'school background' => 2,
+            ],
+            'min_score' => 2,
+        ],
+        'grades' => [
+            'keywords' => [
+                'my grades' => 3, 'my marks' => 3, 'my scores' => 3,
+                'show grades' => 2, 'view grades' => 2, 'grades for' => 2,
+                'what are my grades' => 3, 'grade' => 1, 'grades' => 1,
             ],
             'min_score' => 2,
         ],
@@ -122,6 +174,14 @@ class ChatController extends Controller
                 'find the page' => 3, 'where can i' => 3, 'link to' => 3,
                 'how to access' => 3, 'where do i' => 2,
                 'page' => 1, 'link' => 1, 'access' => 1,
+            ],
+            'min_score' => 2,
+        ],
+        'academic_years' => [
+            'keywords' => [
+                'academic year' => 3, 'school year' => 3, 'current academic year' => 3,
+                'active academic year' => 3, 'what academic year' => 2,
+                'years' => 1,
             ],
             'min_score' => 2,
         ],
@@ -163,11 +223,12 @@ class ChatController extends Controller
             if (!$isCasual) {
                 $detectedIntent = $this->detectIntent($msgLower);
 
-                Log::info("Chat Debug — message: '{$msgLower}' | intent: '{$detectedIntent}'");
+                Log::info("Chat Debug — message: '{$msgLower}' | intent: '{$detectedIntent}' | role: {$userRole}");
 
                 // If navigation intent, also figure out which page ────────────
-                if ($detectedIntent === 'navigation' && $userRole === 'Admin') {
-                    foreach ($this->adminRoutes as $keyword => $route) {
+                if ($detectedIntent === 'navigation') {
+                    $routes = $this->getRoutesByRole($userRole);
+                    foreach ($routes as $keyword => $route) {
                         if (str_contains($msgLower, $keyword)) {
                             $navigationLink = $route;
                             break;
@@ -197,52 +258,54 @@ class ChatController extends Controller
             $roleInstructions = $this->getRoleInstructions($userRole);
 
             $navContext = $navigationLink
-                ? "\nNAVIGATION: The user is asking about '{$navigationLink['label']}'. "
-                  . "Provide this EXACT link: [{$navigationLink['label']}]({$navigationLink['url']}). "
-                  . "Use ONLY the path — do NOT use full URLs.\n"
-                : '';
+            ? "\nIMPORTANT NAVIGATION INSTRUCTION: The user is asking about '{$navigationLink['label']}'. "
+            . "You MUST use this EXACT link when providing navigation: [{$navigationLink['label']}]({$navigationLink['url']}). "
+            . "DO NOT create or suggest any other links. ONLY use the link provided above.\n"
+            : '';
 
-            $systemPrompt = "
-                You are SIS Assistant, a smart and friendly AI built into a School Information System for a Philippine junior/senior high school.
+        // Also add this to the STRICT OUTPUT RULES section in the system prompt:
+        $systemPrompt = "
+            You are SIS Assistant, a smart and friendly AI built into a School Information System for a Philippine junior/senior high school.
 
-                {$roleInstructions}
+            {$roleInstructions}
 
-                PERSONALITY:
-                - Warm, professional, and concise.
-                - Address the user by their first name naturally when it fits.
-                - For greetings — respond with a SHORT friendly greeting ONLY. Do NOT list data or stats.
-                - For casual small talk, keep it to 1-2 sentences max.
-                - Only provide data when the user explicitly asks for it.
-                - Never volunteer information the user did not ask for.
-                - When providing navigation links, format them as markdown: [Label](/path)
-                - Remember context from earlier in this conversation and refer back when relevant.
+            PERSONALITY:
+            - Warm, professional, and concise.
+            - Address the user by their first name naturally when it fits.
+            - For greetings — respond with a SHORT friendly greeting ONLY. Do NOT list data or stats.
+            - For casual small talk, keep it to 1-2 sentences max.
+            - Only provide data when the user explicitly asks for it.
+            - Never volunteer information the user did not ask for.
 
-                STRICT OUTPUT RULES — NEVER BREAK THESE:
-                - Output ONLY the final response. Nothing else.
-                - NEVER include thinking steps, reasoning, drafts, or self-checks.
-                - NEVER start with 'Thinking:', 'Draft:', 'Final Output:', 'Step:', or any internal commentary.
-                - NEVER explain what you are about to do. Just do it.
-                - Keep answers under 150 words unless listing data that requires more.
+            STRICT OUTPUT RULES — NEVER BREAK THESE:
+            - Output ONLY the final response. Nothing else.
+            - NEVER include thinking steps, reasoning, drafts, or self-checks.
+            - NEVER start with 'Thinking:', 'Draft:', 'Final Output:', 'Step:', or any internal commentary.
+            - NEVER explain what you are about to do. Just do it.
+            - Keep answers under 150 words unless listing data that requires more.
+            - **ABSOLUTELY DO NOT create or suggest any navigation links yourself.** 
+            - **ONLY use navigation links that are explicitly provided in the NAVIGATION section below.**
+            - If no navigation link is provided, DO NOT mention any links at all.
 
-                LOGGED IN USER:
-                - Name: {$userName}
-                - Role: {$userRole}
-                - Email: {$user->email}
+            LOGGED IN USER:
+            - Name: {$userName}
+            - Role: {$userRole}
+            - Email: {$user->email}
 
-                {$navContext}
+            {$navContext}
 
-                SCHOOL DATA SNAPSHOT (as of " . now()->format('F d, Y') . "):
-                - Total active students: {$totalStudents}
-                - Total active teachers: {$totalTeachers}
-                - New students enrolled this month: {$newThisMonth}
-                - Total sections: {$sections}
-                - Grade levels offered: {$gradeLevels}
-                - Total announcements posted: {$announcements}
-                - Total school events: {$events}
-                - Active policies: {$activePolicies}
+            SCHOOL DATA SNAPSHOT (as of " . now()->format('F d, Y') . "):
+            - Total active students: {$totalStudents}
+            - Total active teachers: {$totalTeachers}
+            - New students enrolled this month: {$newThisMonth}
+            - Total sections: {$sections}
+            - Grade levels offered: {$gradeLevels}
+            - Total announcements posted: {$announcements}
+            - Total school events: {$events}
+            - Active policies: {$activePolicies}
 
-                " . ($dynamicContext ? "ADDITIONAL DATA FOR THIS QUERY:\n{$dynamicContext}" : '') . "
-            ";
+            " . ($dynamicContext ? "ADDITIONAL DATA FOR THIS QUERY:\n{$dynamicContext}" : '') . "
+        ";
 
             // ── Build messages array with history ─────────────────────────────
             $messages = [['role' => 'system', 'content' => $systemPrompt]];
@@ -259,7 +322,7 @@ class ChatController extends Controller
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . env('OPENROUTER_API_KEY'),
                 'Content-Type'  => 'application/json',
-                'HTTP-Referer'  => 'http://localhost',
+                'HTTP-Referer'  => env('APP_URL', 'http://localhost'),
                 'X-Title'       => 'School Information System',
             ])->post('https://openrouter.ai/api/v1/chat/completions', [
                 'model'      => 'mistralai/mixtral-8x7b-instruct',
@@ -281,7 +344,7 @@ class ChatController extends Controller
 
             // ── Parse reply ───────────────────────────────────────────────────
             $reply       = null;
-            $message_obj = $data['choices'][0]['message'] ?? null;
+            $message_obj = isset($data['choices'][0]['message']) ? $data['choices'][0]['message'] : null;
 
             if ($message_obj) {
                 if (!empty($message_obj['content'])) {
@@ -382,30 +445,38 @@ class ChatController extends Controller
         if (!$intent) return '';
 
         // Role-based access control per intent
-        $adminOnly   = ['students', 'teachers', 'summary'];
-        $teacherPlus = ['sections', 'announcements']; // teacher + admin
+        $adminOnly   = ['students', 'teachers', 'summary', 'sections', 'subjects', 'academic_years'];
+        $teacherPlus = ['grades', 'announcements']; // teacher + admin
         $allRoles    = ['profile', 'events', 'policies', 'school_info', 'navigation'];
 
         if (in_array($intent, $adminOnly) && $role !== 'Admin') {
-            return "Note: This data is restricted to Admin users only.";
+            return "Note: This information is only available to Admin users.";
+        }
+
+        if ($intent === 'grades' && $role === 'Student') {
+            return $this->getStudentGrades($user);
+        }
+
+        if ($intent === 'grades' && $role === 'Teacher') {
+            return $this->getTeacherGrades($user);
         }
 
         return match($intent) {
-            'profile'      => $this->getUserCredentials($user, $role),
-            'students'     => $this->getStudentList(),
-            'teachers'     => $this->getTeacherList(),
-            'announcements'=> $role === 'Admin'
-                                ? $this->getAllAnnouncements()
-                                : ($role === 'Teacher'
-                                    ? $this->getUserAnnouncements($user->id)
-                                    : $this->getStudentAnnouncements($user)),
-            'events'       => $this->getUpcomingEvents(),
-            'policies'     => $this->getPolicies(),
-            'sections'     => $this->getSections(),
-            'school_info'  => $this->getSchoolInfo(),
-            'summary'      => $this->getAdminSummary(),
-            'navigation'   => '', // handled via $navigationLink separately
-            default        => '',
+            'profile'        => $this->getUserCredentials($user, $role),
+            'students'       => $this->getStudentList(),
+            'teachers'       => $this->getTeacherList(),
+            'announcements'  => $this->getAnnouncementsByRole($user, $role),
+            'events'         => $this->getUpcomingEvents(),
+            'policies'       => $this->getPolicies(),
+            'sections'       => $this->getSections(),
+            'subjects'       => $this->getSubjects(),
+            'grades'         => $role === 'Admin' ? $this->getAllGrades() : 
+                               ($role === 'Teacher' ? $this->getTeacherGrades($user) : $this->getStudentGrades($user)),
+            'school_info'    => $this->getSchoolInfo(),
+            'summary'        => $this->getAdminSummary(),
+            'academic_years' => $this->getAcademicYears(),
+            'navigation'     => '', // handled via $navigationLink separately
+            default          => '',
         };
     }
 
@@ -424,20 +495,29 @@ class ChatController extends Controller
                 - NEVER list available pages unless the user explicitly asks for navigation help.
                 - NEVER repeat the same data twice in one response.
                 - NEVER add a navigation section at the end of a data response.
-                - Only provide navigation links when explicitly asked. Example pages:
-                  [Dashboard](/dashboard), [User Management](/students), [Policies](/admin/policies)
+                - Only provide navigation links when explicitly asked.
             ",
             'Teacher' => "
                 You are assisting a TEACHER user.
-                You can only share: their own profile, their own announcements, upcoming school events,
-                active school policies, section information, and school mission/vision/values.
-                Do NOT share other teachers' personal details, student personal records, or admin-level data.
+                ACCESS RULES FOR TEACHERS:
+                - Can view: their own profile, their own announcements, upcoming school events,
+                  active school policies, section information, their class list, their grades,
+                  school mission/vision/values, and their teaching schedule.
+                - Can view student names in their classes, but NOT other students' personal records.
+                - Can view their own grades (for subjects they teach).
+                - Do NOT share other teachers' personal details or admin-level data.
+                - When providing page links, use ONLY relative paths like /teacher/schedule.
+                - Format links as markdown: [Label](/path)
             ",
             default => "
                 You are assisting a STUDENT user.
-                You can only share: their own profile and section, upcoming school events,
-                active school policies, school mission/vision/values, and announcements for their section.
-                Do NOT share other students' records, teacher details, or admin-level data.
+                ACCESS RULES FOR STUDENTS:
+                - Can view: their own profile, their section, upcoming school events,
+                  active school policies, school mission/vision/values, announcements for their section,
+                  their own grades, and their class schedule.
+                - Do NOT share other students' records, teacher details, or admin-level data.
+                - When providing page links, use ONLY relative paths like /student/schedule.
+                - Format links as markdown: [Label](/path)
             ",
         };
     }
@@ -499,22 +579,24 @@ class ChatController extends Controller
     // ── Dynamic Query Methods ─────────────────────────────────────────────────
     private function getUserCredentials($user, string $role): string
     {
-        $out  = "User credentials for {$user->name}:\n";
-        $out .= "- Email: {$user->email}\n";
-        $out .= "- Role: {$role}\n";
-        $out .= "- Status: {$user->status}\n";
-        $out .= "- Account created: {$user->created_at}\n";
+        $out  = "**Your Profile Information**\n\n";
+        $out .= "• **Name:** {$user->name}\n";
+        $out .= "• **Email:** {$user->email}\n";
+        $out .= "• **Role:** {$role}\n";
+        $out .= "• **Status:** {$user->status}\n";
+        $out .= "• **Account Created:** " . date('F d, Y', strtotime($user->created_at)) . "\n\n";
 
         if ($role === 'Teacher') {
             $d = DB::table('teacher_details')->where('id', $user->details_id)->first();
             if ($d) {
-                $out .= "- Employee ID: {$d->employee_id}\n";
-                $out .= "- Department: {$d->department}\n";
-                $out .= "- Position: {$d->position}\n";
-                $out .= "- Specialization: {$d->specialization}\n";
-                $out .= "- Employment Status: {$d->employment_status}\n";
-                $out .= "- Date Hired: {$d->date_hired}\n";
-                $out .= "- Contact: {$d->contact_no}\n";
+                $out .= "**Teacher Details:**\n";
+                $out .= "• **Employee ID:** {$d->employee_id}\n";
+                $out .= "• **Department:** {$d->department}\n";
+                $out .= "• **Position:** {$d->position}\n";
+                $out .= "• **Specialization:** {$d->specialization}\n";
+                $out .= "• **Employment Status:** {$d->employment_status}\n";
+                $out .= "• **Date Hired:** " . date('F d, Y', strtotime($d->date_hired)) . "\n";
+                $out .= "• **Contact:** {$d->contact_no}\n";
             }
         }
 
@@ -523,166 +605,391 @@ class ChatController extends Controller
             if ($d) {
                 $gl  = DB::table('grade_level')->where('id', $d->grade_level_id)->value('grade_level_name');
                 $sc  = DB::table('section')->where('id', $d->section_id)->value('section_name');
-                $out .= "- Student No: {$d->student_no}\n";
-                $out .= "- Grade Level: {$gl}\n";
-                $out .= "- Section: {$sc}\n";
-                $out .= "- Contact: {$d->contact_no}\n";
-                $out .= "- Address: {$d->address}\n";
+                $out .= "**Student Details:**\n";
+                $out .= "• **Student No/LRN:** {$d->student_no}\n";
+                $out .= "• **Grade Level:** {$gl}\n";
+                $out .= "• **Section:** {$sc}\n";
+                $out .= "• **Contact:** {$d->contact_no}\n";
+                $out .= "• **Address:** {$d->address}\n";
+                $out .= "• **Birthdate:** " . ($d->birthdate ? date('F d, Y', strtotime($d->birthdate)) : 'Not set') . "\n";
+                $out .= "• **Gender:** {$d->sex}\n";
             }
         }
 
         return $out;
     }
 
-    private function getUserAnnouncements(int $userId): string
+    private function getAnnouncementsByRole($user, string $role): string
     {
-        $rows = DB::table('announcements as a')
-                    ->join('subject as s', 'a.subject_id', '=', 's.id')
-                    ->where('a.user_id', $userId)
-                    ->orderBy('a.date_posted', 'desc')
-                    ->limit(10)
-                    ->get(['a.title', 'a.date_posted', 's.subject_name']);
+        if ($role === 'Admin') {
+            $rows = DB::table('announcements as a')
+                        ->join('subject as s', 'a.subject_id', '=', 's.id')
+                        ->join('users as u', 'a.user_id', '=', 'u.id')
+                        ->orderBy('a.date_posted', 'desc')
+                        ->limit(10)
+                        ->get(['a.title', 'a.date_posted', 's.subject_name', 'u.name as posted_by']);
 
-        if ($rows->isEmpty()) return "No announcements found for this user.";
+            if ($rows->isEmpty()) return "No announcements found.";
 
-        return "Your announcements:\n" . $rows->map(fn($r) =>
-            "- [{$r->date_posted}] {$r->title} (Subject: {$r->subject_name})"
-        )->implode("\n");
-    }
+            $out = "**Recent Announcements (Admin View):**\n\n";
+            foreach ($rows as $r) {
+                $out .= "• **[{$r->date_posted}] {$r->title}**\n";
+                $out .= "  Subject: {$r->subject_name} | Posted by: {$r->posted_by}\n\n";
+            }
+            return $out;
+        }
 
-    private function getStudentAnnouncements($user): string
-    {
+        if ($role === 'Teacher') {
+            $rows = DB::table('announcements as a')
+                        ->join('subject as s', 'a.subject_id', '=', 's.id')
+                        ->where('a.user_id', $user->id)
+                        ->orderBy('a.date_posted', 'desc')
+                        ->limit(10)
+                        ->get(['a.title', 'a.date_posted', 's.subject_name']);
+
+            if ($rows->isEmpty()) return "You haven't posted any announcements yet. You can create one at [Announcements](/announcements).";
+
+            $out = "**Your Announcements:**\n\n";
+            foreach ($rows as $r) {
+                $out .= "• **[{$r->date_posted}] {$r->title}** (Subject: {$r->subject_name})\n";
+            }
+            return $out;
+        }
+
+        // Student
         $details = DB::table('user_details')->where('id', $user->details_id)->first();
-        if (!$details) return "No announcements found.";
+        if (!$details || !$details->section_id) return "No announcements found for your section.";
 
         $rows = DB::table('announcements as a')
                     ->join('announcement_sections as ans', 'a.id', '=', 'ans.announcement_id')
                     ->join('subject as s', 'a.subject_id', '=', 's.id')
+                    ->join('users as u', 'a.user_id', '=', 'u.id')
+                    ->leftJoin('teacher_details as td', 'u.details_id', '=', 'td.id')
                     ->where('ans.section_id', $details->section_id)
                     ->orderBy('a.date_posted', 'desc')
                     ->limit(10)
-                    ->get(['a.title', 'a.date_posted', 's.subject_name']);
+                    ->select('a.title', 'a.date_posted', 's.subject_name', 'u.name as teacher_name')
+                    ->get();
 
         if ($rows->isEmpty()) return "No announcements found for your section.";
 
-        return "Announcements for your section:\n" . $rows->map(fn($r) =>
-            "- [{$r->date_posted}] {$r->title} (Subject: {$r->subject_name})"
-        )->implode("\n");
-    }
-
-    private function getAllAnnouncements(): string
-    {
-        $rows = DB::table('announcements as a')
-                    ->join('subject as s', 'a.subject_id', '=', 's.id')
-                    ->join('users as u', 'a.user_id', '=', 'u.id')
-                    ->orderBy('a.date_posted', 'desc')
-                    ->limit(10)
-                    ->get(['a.title', 'a.date_posted', 's.subject_name', 'u.name as posted_by']);
-
-        if ($rows->isEmpty()) return "No announcements found.";
-
-        return "Recent announcements:\n" . $rows->map(fn($r) =>
-            "- [{$r->date_posted}] {$r->title} by {$r->posted_by} (Subject: {$r->subject_name})"
-        )->implode("\n");
+        $out = "**Announcements for Your Section:**\n\n";
+        foreach ($rows as $r) {
+            $out .= "• **[{$r->date_posted}] {$r->title}**\n";
+            $out .= "  Subject: {$r->subject_name} | Posted by: {$r->teacher_name}\n\n";
+        }
+        return $out;
     }
 
     private function getStudentList(): string
     {
+        $total = DB::table('users')->where('role_id', 2)->where('status', 'Active')->count();
+        
         $rows = DB::table('users as u')
                     ->join('user_details as d', 'u.details_id', '=', 'd.id')
                     ->join('grade_level as gl', 'd.grade_level_id', '=', 'gl.id')
                     ->join('section as sc', 'd.section_id', '=', 'sc.id')
                     ->where('u.role_id', 2)
                     ->where('u.status', 'Active')
-                    ->limit(3)
-                    ->get(['u.name', 'd.student_no', 'gl.grade_level_name', 'sc.section_name']);
+                    ->orderBy('gl.id')
+                    ->orderBy('sc.section_name')
+                    ->orderBy('d.lname')
+                    ->limit(5)
+                    ->get(['u.name', 'd.student_no', 'gl.grade_level_name', 'sc.section_name', 'd.lname', 'd.fname']);
 
         if ($rows->isEmpty()) return "No students found.";
 
-        return "Active students (showing 3 of many — see full list at [User Management](/students)):\n" . $rows->map(fn($r) =>
-            "- {$r->name} | Student No: {$r->student_no} | {$r->grade_level_name} - {$r->section_name}"
-        )->implode("\n");
+        $out = "**Active Students (Total: {$total})**\n\n";
+        $out .= "Showing 5 of {$total} students. View the complete list at [User Management](/students):\n\n";
+        
+        foreach ($rows as $r) {
+            $out .= "• **{$r->name}** (LRN: {$r->student_no})\n";
+            $out .= "  {$r->grade_level_name} - {$r->section_name}\n\n";
+        }
+        
+        return $out;
     }
 
     private function getTeacherList(): string
     {
+        $total = DB::table('users')->where('role_id', 1)->where('status', 'Active')->count();
+        
         $rows = DB::table('users as u')
                     ->join('teacher_details as d', 'u.details_id', '=', 'd.id')
                     ->where('u.role_id', 1)
                     ->where('u.status', 'Active')
-                    ->limit(3)
+                    ->orderBy('d.lname')
+                    ->limit(5)
                     ->get(['u.name', 'd.employee_id', 'd.department', 'd.position']);
 
         if ($rows->isEmpty()) return "No teachers found.";
 
-        return "Active teachers (showing 3 of many — see full list at [User Management](/students)):\n" . $rows->map(fn($r) =>
-            "- {$r->name} | ID: {$r->employee_id} | {$r->department} - {$r->position}"
-        )->implode("\n");
+        $out = "**Active Teachers (Total: {$total})**\n\n";
+        $out .= "Showing 5 of {$total} teachers. View the complete list at [User Management](/students):\n\n";
+        
+        foreach ($rows as $r) {
+            $out .= "• **{$r->name}** (ID: {$r->employee_id})\n";
+            $out .= "  {$r->department} - {$r->position}\n\n";
+        }
+        
+        return $out;
     }
 
     private function getUpcomingEvents(): string
-    {
-        $rows = DB::table('events')
-                    ->where('event_date', '>=', now()->toDateString())
-                    ->orderBy('event_date')
-                    ->limit(10)
-                    ->get(['title', 'event_date', 'event_type', 'description']);
+{
+    $rows = DB::table('events')
+                ->where('event_date', '>=', now()->toDateString())
+                ->orderBy('event_date')
+                ->limit(10)
+                ->get(['title', 'event_date', 'event_type', 'description']);
 
-        if ($rows->isEmpty()) return "No upcoming events.";
+    if ($rows->isEmpty()) return "No upcoming events.";
 
-        return "Upcoming events:\n" . $rows->map(fn($r) =>
-            "- [{$r->event_date}] {$r->title} ({$r->event_type})" . ($r->description ? ": {$r->description}" : '')
-        )->implode("\n");
+    $out = "**Upcoming Events:**\n\n";
+    foreach ($rows as $r) {
+        $date = date('M d, Y', strtotime($r->event_date));
+        $type = ucfirst($r->event_type);
+        $out .= "• **{$date} - {$r->title}** ({$type})\n";
+        if ($r->description) {
+            $out .= "  {$r->description}\n";
+        }
+        $out .= "\n";
     }
+    
+    $role = auth()->user()->role->name;
+    $calendarRoute = $role === 'Admin' ? '/admin/calendar' : ($role === 'Teacher' ? '/teacher/calendar' : '/student/calendar');
+    $out .= "View full calendar: [Calendar]({$calendarRoute})";
+    
+    return $out;
+}
 
-    private function getPolicies(): string
-    {
-        $rows = DB::table('policies')
-                    ->where('status', 'Active')
-                    ->orderBy('effective_date', 'desc')
-                    ->limit(10)
-                    ->get(['title', 'category', 'effective_date', 'description']);
+  private function getPolicies(): string
+{
+    $rows = DB::table('policies')
+                ->where('status', 'Active')
+                ->orderBy('effective_date', 'desc')
+                ->limit(10)
+                ->get(['title', 'category', 'effective_date', 'description']);
 
-        if ($rows->isEmpty()) return "No active policies found.";
+    if ($rows->isEmpty()) return "No active policies found.";
 
-        return "Active policies:\n" . $rows->map(fn($r) =>
-            "- [{$r->category}] {$r->title} (Effective: {$r->effective_date})" . ($r->description ? ": {$r->description}" : '')
-        )->implode("\n");
+    $out = "**Active School Policies:**\n\n";
+    foreach ($rows as $r) {
+        $date = date('M d, Y', strtotime($r->effective_date));
+        $out .= "• **{$r->title}** [{$r->category}]\n";
+        $out .= "  Effective: {$date}\n";
+        if ($r->description) {
+            $out .= "  {$r->description}\n";
+        }
+        $out .= "\n";
     }
-
+    
+    $role = auth()->user()->role->name;
+    $policiesRoute = $role === 'Admin' ? '/admin/policies' : ($role === 'Teacher' ? '/teacher/policies' : '/student/policies');
+    $out .= "View all policies: [Policies]({$policiesRoute})";
+    
+    return $out;
+}
     private function getSections(): string
     {
         $rows = DB::table('section as s')
                     ->join('grade_level as gl', 's.grade_level_id', '=', 'gl.id')
                     ->orderBy('gl.id')
-                    ->get(['s.section_name', 'gl.grade_level_name']);
+                    ->orderBy('s.section_name')
+                    ->get(['s.section_name', 'gl.grade_level_name', 's.student_enrolled']);
 
         if ($rows->isEmpty()) return "No sections found.";
 
-        return "All sections:\n" . $rows->map(fn($r) =>
-            "- {$r->grade_level_name}: {$r->section_name}"
-        )->implode("\n");
-    }
-
-    private function getSchoolInfo(): string
-    {
-        $info = DB::table('school_info')->first();
-        if (!$info) return "School info not set yet.";
-
-        $values = [];
-        try { $values = json_decode($info->core_values ?? '[]', true); } catch (\Exception $e) {}
-
-        $out  = "School Information:\n";
-        $out .= "- Mission: "     . ($info->mission ?? 'Not set') . "\n";
-        $out .= "- Vision: "      . ($info->vision  ?? 'Not set') . "\n";
-        $out .= "- Core Values: " . (count($values) > 0 ? implode(', ', $values) : 'Not set') . "\n";
+        $out = "**All Sections:**\n\n";
+        foreach ($rows as $r) {
+            $out .= "• **{$r->grade_level_name} - {$r->section_name}**\n";
+            $out .= "  Students enrolled: {$r->student_enrolled}\n\n";
+        }
+        
+        if (auth()->user()->role->name === 'Admin') {
+            $out .= "Manage sections: [Sections](/admin/sections)";
+        }
+        
         return $out;
     }
+
+    private function getSubjects(): string
+    {
+        $rows = DB::table('subject')
+                    ->orderBy('subject_name')
+                    ->get();
+
+        if ($rows->isEmpty()) return "No subjects found.";
+
+        $out = "**All Subjects:**\n\n";
+        foreach ($rows as $r) {
+            $out .= "• {$r->subject_name}\n";
+        }
+        
+        if (auth()->user()->role->name === 'Admin') {
+            $out .= "\nManage subjects: [Subjects](/admin/subjects)";
+        }
+        
+        return $out;
+    }
+
+    private function getStudentGrades($user): string
+    {
+        $grades = DB::table('grades as g')
+                    ->join('subject as s', 'g.subject_id', '=', 's.id')
+                    ->join('section as sec', 'g.section_id', '=', 'sec.id')
+                    ->join('grade_level as gl', 'g.grade_level_id', '=', 'gl.id')
+                    ->where('g.student_id', $user->id)
+                    ->orderBy('g.quarter')
+                    ->orderBy('s.subject_name')
+                    ->get(['s.subject_name', 'g.quarter', 'g.grade', 'g.remarks', 'sec.section_name', 'gl.grade_level_name']);
+
+        if ($grades->isEmpty()) return "No grades found for your account.";
+
+        $out = "**Your Grades:**\n\n";
+        $out .= "Section: {$grades[0]->grade_level_name} - {$grades[0]->section_name}\n\n";
+        
+        $currentQuarter = null;
+        foreach ($grades as $g) {
+            if ($currentQuarter !== $g->quarter) {
+                $currentQuarter = $g->quarter;
+                $out .= "\n**Quarter {$g->quarter}**\n";
+            }
+            $out .= "• {$g->subject_name}: **{$g->grade}**";
+            if ($g->remarks) {
+                $out .= " ({$g->remarks})";
+            }
+            $out .= "\n";
+        }
+        
+        $out .= "\nView detailed grades: [My Grades](/grades)";
+        
+        return $out;
+    }
+
+    private function getTeacherGrades($user): string
+    {
+        // Get sections the teacher handles
+        $sections = DB::table('schedule')
+                    ->where('user_id', $user->id)
+                    ->distinct()
+                    ->pluck('section_id');
+
+        if ($sections->isEmpty()) return "You don't have any sections assigned yet.";
+
+        $grades = DB::table('grades as g')
+                    ->join('users as u', 'g.student_id', '=', 'u.id')
+                    ->join('user_details as ud', 'u.details_id', '=', 'ud.id')
+                    ->join('subject as s', 'g.subject_id', '=', 's.id')
+                    ->join('section as sec', 'g.section_id', '=', 'sec.id')
+                    ->join('grade_level as gl', 'g.grade_level_id', '=', 'gl.id')
+                    ->whereIn('g.section_id', $sections)
+                    ->orderBy('gl.id')
+                    ->orderBy('sec.section_name')
+                    ->orderBy('ud.lname')
+                    ->orderBy('g.quarter')
+                    ->limit(20)
+                    ->get(['u.name', 's.subject_name', 'g.quarter', 'g.grade', 'g.remarks', 'sec.section_name', 'gl.grade_level_name']);
+
+        if ($grades->isEmpty()) return "No grades recorded for your sections yet.";
+
+        $out = "**Recent Grades from Your Sections (showing 20 of many):**\n\n";
+        
+        foreach ($grades as $g) {
+            $out .= "• **{$g->name}** - {$g->grade_level_name} {$g->section_name}\n";
+            $out .= "  {$g->subject_name} (Q{$g->quarter}): {$g->grade}";
+            if ($g->remarks) {
+                $out .= " - {$g->remarks}";
+            }
+            $out .= "\n\n";
+        }
+        
+        $out .= "Manage all grades: [Grades](/grades)";
+        
+        return $out;
+    }
+
+    private function getAllGrades(): string
+    {
+        $total = DB::table('grades')->count();
+        
+        $grades = DB::table('grades as g')
+                    ->join('users as u', 'g.student_id', '=', 'u.id')
+                    ->join('user_details as ud', 'u.details_id', '=', 'ud.id')
+                    ->join('subject as s', 'g.subject_id', '=', 's.id')
+                    ->join('section as sec', 'g.section_id', '=', 'sec.id')
+                    ->join('grade_level as gl', 'g.grade_level_id', '=', 'gl.id')
+                    ->orderBy('gl.id')
+                    ->orderBy('sec.section_name')
+                    ->orderBy('ud.lname')
+                    ->orderBy('g.quarter')
+                    ->limit(15)
+                    ->get(['u.name', 's.subject_name', 'g.quarter', 'g.grade', 'sec.section_name', 'gl.grade_level_name']);
+
+        if ($grades->isEmpty()) return "No grades found.";
+
+        $out = "**Grade Records (Total: {$total})**\n\n";
+        $out .= "Showing 15 of {$total} records:\n\n";
+        
+        foreach ($grades as $g) {
+            $out .= "• **{$g->name}** - {$g->grade_level_name} {$g->section_name}\n";
+            $out .= "  {$g->subject_name} (Q{$g->quarter}): {$g->grade}\n\n";
+        }
+        
+        $out .= "Manage all grades: [Grades](/admin/grades)";
+        
+        return $out;
+    }
+
+private function getSchoolInfo(): string
+{
+    $info = DB::table('school_info')->first();
+    if (!$info) return "School information has not been set up yet.";
+
+    $values = array();
+    if (!empty($info->core_values)) {
+        try { 
+            $decoded = json_decode($info->core_values, true);
+            if (is_array($decoded)) {
+                $values = $decoded;
+            }
+        } catch (\Exception $e) {
+            // If json_decode fails, try to handle as comma-separated string
+            $values = explode(',', $info->core_values);
+        }
+    }
+
+    $mission = isset($info->mission) ? $info->mission : 'Not set';
+    $vision = isset($info->vision) ? $info->vision : 'Not set';
+
+    $out  = "**🏫 School Information**\n\n";
+    $out .= "**Mission:**\n{$mission}\n\n";
+    $out .= "**Vision:**\n{$vision}\n\n";
+    $out .= "**Core Values:**\n";
+    
+    if (count($values) > 0) {
+        foreach ($values as $val) {
+            $val = trim($val);
+            if (!empty($val)) {
+                $out .= "• {$val}\n";
+            }
+        }
+    } else {
+        $out .= "Not set\n";
+    }
+    
+    $role = auth()->user()->role->name;
+    $policiesRoute = $role === 'Admin' ? '/admin/policies' : ($role === 'Teacher' ? '/teacher/policies' : '/student/policies');
+    $out .= "\nView/Edit: [Policies & School Info]({$policiesRoute})";
+    
+    return $out;
+}
 
     private function getAdminSummary(): string
     {
         $totalStudents  = DB::table('users')->where('role_id', 2)->where('status', 'Active')->count();
         $totalTeachers  = DB::table('users')->where('role_id', 1)->where('status', 'Active')->count();
+        $totalInactive  = DB::table('users')->where('status', 'Inactive')->count();
         $newThisMonth   = DB::table('users')->where('role_id', 2)->where('status', 'Active')
                             ->whereMonth('created_at', now()->month)
                             ->whereYear('created_at', now()->year)->count();
@@ -690,14 +997,52 @@ class ChatController extends Controller
         $events         = DB::table('events')->count();
         $activePolicies = DB::table('policies')->where('status', 'Active')->count();
         $sections       = DB::table('section')->count();
+        $subjects       = DB::table('subject')->count();
+        $gradeLevels    = DB::table('grade_level')->count();
 
-        return "Full school summary:\n"
-            . "- Active students: {$totalStudents}\n"
-            . "- Active teachers: {$totalTeachers}\n"
-            . "- New students this month: {$newThisMonth}\n"
-            . "- Total sections: {$sections}\n"
-            . "- Total announcements: {$announcements}\n"
-            . "- Total events: {$events}\n"
-            . "- Active policies: {$activePolicies}\n";
+        return "**📊 School System Summary**\n\n"
+            . "**Users:**\n"
+            . "• Active Students: {$totalStudents}\n"
+            . "• Active Teachers: {$totalTeachers}\n"
+            . "• Inactive Accounts: {$totalInactive}\n"
+            . "• New Students This Month: {$newThisMonth}\n\n"
+            . "**Academic:**\n"
+            . "• Grade Levels: {$gradeLevels}\n"
+            . "• Sections: {$sections}\n"
+            . "• Subjects: {$subjects}\n\n"
+            . "**Content:**\n"
+            . "• Announcements: {$announcements}\n"
+            . "• Events: {$events}\n"
+            . "• Active Policies: {$activePolicies}\n\n"
+            . "View dashboard: [Dashboard](/dashboard)";
+    }
+
+    private function getAcademicYears(): string
+    {
+        $years = DB::table('academic_year')
+                    ->orderBy('year_start', 'desc')
+                    ->get();
+
+        if ($years->isEmpty()) return "No academic years found.";
+
+        $current = DB::table('academic_year')->where('is_active', 1)->first();
+        
+        $out = "**📅 Academic Years**\n\n";
+        
+        if ($current) {
+            $out .= "**Current Active Year:** {$current->year_start}-{$current->year_end}\n\n";
+        }
+        
+        $out .= "**All Academic Years:**\n";
+        foreach ($years as $y) {
+            $active = $y->is_active ? " (Active)" : "";
+            $out .= "• {$y->year_start}-{$y->year_end}{$active}\n";
+        }
+        
+        if (auth()->user()->role->name === 'Admin') {
+            $out .= "\nManage academic years: [Academic Years](/academic-years)";
+        }
+        
+        return $out;
     }
 }
