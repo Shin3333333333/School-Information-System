@@ -11,13 +11,14 @@ class PoliciesController extends Controller
 {
     public function index()
     {
-        return view('admin.policies');
+        // Blade lives at resources/views/policies.blade.php (shared for all roles)
+        return view('policies');
     }
 
     public function list()
     {
         try {
-            $data = DB::select("CALL usp_get_data(?, ?)", [7, 0]); // MODE 7: all policies
+            $data = DB::select("CALL usp_get_data(?, ?)", [7, 0]);
             return response()->json(['status' => 'success', 'data' => $data]);
         } catch (\Exception $e) {
             Log::error("Policies Fetch Error: " . $e->getMessage());
@@ -35,17 +36,14 @@ class PoliciesController extends Controller
         ]);
 
         try {
-            $data = [
+            DB::select("CALL usp_sql_actions(?, ?)", [7, json_encode([
                 'title'          => $request->title,
                 'description'    => $request->description,
                 'category'       => $request->category,
                 'effective_date' => $request->effective_date,
                 'status'         => $request->status,
                 'created_by'     => auth()->id(),
-            ];
-
-            DB::select("CALL usp_sql_actions(?, ?)", [7, json_encode($data)]); // MODE 7: insert policy
-
+            ])]);
             return response()->json(['status' => 'success', 'message' => 'Policy added successfully.']);
         } catch (\Exception $e) {
             Log::error("Policies Store Error: " . $e->getMessage());
@@ -64,17 +62,14 @@ class PoliciesController extends Controller
         ]);
 
         try {
-            $data = [
+            DB::select("CALL usp_sql_actions(?, ?)", [8, json_encode([
                 'id'             => (int) $request->id,
                 'title'          => $request->title,
                 'description'    => $request->description,
                 'category'       => $request->category,
                 'effective_date' => $request->effective_date,
                 'status'         => $request->status,
-            ];
-
-            DB::select("CALL usp_sql_actions(?, ?)", [8, json_encode($data)]); // MODE 8: update policy
-
+            ])]);
             return response()->json(['status' => 'success', 'message' => 'Policy updated successfully.']);
         } catch (\Exception $e) {
             Log::error("Policies Update Error: " . $e->getMessage());
@@ -113,7 +108,6 @@ class PoliciesController extends Controller
         ]);
 
         try {
-            // Map 'values' → actual DB column 'core_values'
             $column = $request->field === 'values' ? 'core_values' : $request->field;
 
             DB::table('school_info')->where('id', 1)->update([

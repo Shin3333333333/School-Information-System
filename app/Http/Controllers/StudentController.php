@@ -31,12 +31,12 @@ class StudentController extends Controller
             }
         }
 
-        return view('students.index');
+return view('admin.index');
     }
 
     public function create()
     {
-        return view('students.create');
+return view('admin.create');
     }
 
     public function store(Request $request)
@@ -117,12 +117,12 @@ public function getSections()
 }
     public function show($id)
     {
-        return view('students.show', ['studentId' => $id]);
+return view('admin.show', ['studentId' => $id]);
     }
 
     public function edit($id)
     {
-        return view('students.edit', ['studentId' => $id]);
+return view('admin.edit', ['studentId' => $id]);
     }
 
     public function update(Request $request, $id)
