@@ -283,6 +283,9 @@ function adminClosePostModal() {
 
 // ── Open edit modal ───────────────────────────────────────────────
 function adminOpenEditModal(id) {
+    // Close the view modal first (like teacher does)
+    closeViewModal();
+
     const loadingModal = document.getElementById('loading-modal');
     if (loadingModal) loadingModal.style.display = 'flex';
 
@@ -302,9 +305,16 @@ function adminOpenEditModal(id) {
                 if (a.add_to_calendar && a.calendar_date) {
                     document.getElementById('adminCalendarDate').value = a.calendar_date;
                 }
-                // Load grade level and sections
-                document.getElementById('postGradeLevel').value = a.grade_level_id;
-                loadSectionsForGrade(a.grade_level_id, a.section_ids);
+
+                // Set grade level and load sections
+                if (a.grade_level_id) {
+                    document.getElementById('postGradeLevel').value = a.grade_level_id;
+                    loadSectionsForGrade(a.grade_level_id, a.section_ids);
+                } else {
+                    // Fallback: try to load sections without a grade (should not happen)
+                    loadSectionsForGrade(null, a.section_ids);
+                }
+
                 document.getElementById('adminPostModalTitle').textContent = 'Edit Announcement';
                 document.getElementById('adminPostSubmitBtn').textContent = 'Update Announcement';
                 postModal.style.display = 'flex';
@@ -395,6 +405,7 @@ function adminSaveAnnouncement() {
 }
 
 // ── Confirm Delete ─────────────────────────────────────────────────
+// ── Confirm Delete ─────────────────────────────────────────────────
 function adminConfirmDelete(id) {
     showConfirmationModal('Delete Announcement', 'Are you sure you want to delete this announcement?', function () {
         const loadingModal = document.getElementById('loading-modal');
@@ -406,6 +417,7 @@ function adminConfirmDelete(id) {
             data:   { id: id },
             success: function (response) {
                 if (loadingModal) loadingModal.style.display = 'none';
+                closeViewModal();  // Close the view modal
                 if (response.status === 'success') {
                     showPopup('Deleted', response.message, 'success');
                     loadAnnouncements();
@@ -415,6 +427,7 @@ function adminConfirmDelete(id) {
             },
             error: function (xhr) {
                 if (loadingModal) loadingModal.style.display = 'none';
+                closeViewModal();
                 const msg = xhr.responseJSON?.message || 'Delete failed.';
                 showPopup('Error', msg, 'error');
             }
