@@ -121,7 +121,6 @@ Route::middleware('auth')->group(function () {
     Route::get('admin/announcements',         [AnnouncementController::class, 'adminIndex'])->name('admin.announcements');
     Route::get('announcements/all',           [AnnouncementController::class, 'getAllAnnouncements'])->name('announcements.all');
     Route::get('announcements/list',          [AnnouncementController::class, 'getAnnouncements'])->name('announcements.list');
-    Route::get('student/announcements/list',  [AnnouncementController::class, 'studentAnnouncements'])->name('student.announcements.list');
     Route::get('announcements',               [AnnouncementController::class, 'index'])->name('announcements.index');
     Route::post('announcements/store',        [AnnouncementController::class, 'store'])->name('announcements.store');
     Route::post('announcements/update',       [AnnouncementController::class, 'update'])->name('announcements.update');
@@ -155,4 +154,10 @@ Route::middleware('auth')->group(function () {
     Route::get('student/announcements', fn() => view('announcements'))->name('student.announcements');
     Route::get('student/policies',      fn() => view('policies'))->name('student.policies');
 
+
+    // ── Profile (all roles) ───────────────────────────────────────────────────
+    Route::get('profile',          [App\Http\Controllers\ProfileController::class, 'index'])->name('profile.index');
+    Route::post('profile/update',  [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    Route::post('profile/password',[App\Http\Controllers\ProfileController::class, 'changePassword'])->name('profile.password');
+Route::delete('students/hard-delete/{id}', [StudentController::class, 'hardDestroy'])->name('students.hard-delete');
 });
