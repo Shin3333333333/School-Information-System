@@ -726,8 +726,11 @@ function teacherToggleCalDate(show) {
 }
 
 // ── View ──────────────────────────────────────────────────────────
-function teacherOpenViewModal(id, title, description, subject_name, grade_level_names, section_names, add_to_calendar, calendar_date, subject_id) {
-    teacherCurrentAnnouncement = { id, title, description, subject_name, grade_level_names, section_names, add_to_calendar, calendar_date, subject_id };
+function teacherOpenViewModal(id, title, description, subject_name, grade_level_names, section_names, add_to_calendar, calendar_date, subject_id, poster_role) {
+    teacherCurrentAnnouncement = {
+        id, title, description, subject_name, grade_level_names, section_names,
+        add_to_calendar, calendar_date, subject_id, poster_role
+    };
     document.getElementById('teacherModalTitle').textContent       = title;
     document.getElementById('teacherModalDescription').textContent = description || '—';
     document.getElementById('teacherModalSubject').textContent     = subject_name;
@@ -740,6 +743,17 @@ function teacherOpenViewModal(id, title, description, subject_name, grade_level_
         calInfo.style.display = 'block';
     } else {
         calInfo.style.display = 'none';
+    }
+
+    // Show/hide Edit and Delete buttons based on poster's role
+    const editBtn = document.querySelector('#teacherViewModal .btn-primary');
+    const deleteBtn = document.querySelector('#teacherViewModal .btn-danger');
+    if (poster_role === 3) { // admin
+        editBtn.style.display = 'none';
+        deleteBtn.style.display = 'none';
+    } else {
+        editBtn.style.display = 'inline-flex';
+        deleteBtn.style.display = 'inline-flex';
     }
 
     teacherViewModal.style.display = 'flex';
@@ -958,7 +972,7 @@ function teacherLoadAnnouncements() {
                             <td class="cell-date">${row.date_posted}</td>
                             <td>
                                 <button style="background:none; border:none; cursor:pointer; color:#60a5fa; font-weight:600; font-size:13px; padding:0; font-family:inherit; text-align:left;"
-                                    onclick="teacherOpenViewModal(${row.id},\`${esc(row.title)}\`,\`${esc(row.description)}\`,\`${esc(row.subject_name)}\`,\`${esc(row.grade_level_names)}\`,\`${esc(row.section_names)}\`,${row.add_to_calendar ? 1 : 0},\`${esc(row.calendar_date)}\`,${row.subject_id || 0})">
+                                    onclick="teacherOpenViewModal(${row.id},\`${esc(row.title)}\`,\`${esc(row.description)}\`,\`${esc(row.subject_name)}\`,\`${esc(row.grade_level_names)}\`,\`${esc(row.section_names)}\`,${row.add_to_calendar ? 1 : 0},\`${esc(row.calendar_date)}\`,${row.subject_id || 0}, ${row.role_id})">
                                     ${row.title}
                                 </button>
                                 ${calBadge}
@@ -969,7 +983,7 @@ function teacherLoadAnnouncements() {
                             <td>${row.section_names || '—'}</td>
                             <td>
                                 <button class="btn btn-outline" style="padding:3px 10px; font-size:11px;"
-                                    onclick="teacherOpenViewModal(${row.id},\`${esc(row.title)}\`,\`${esc(row.description)}\`,\`${esc(row.subject_name)}\`,\`${esc(row.grade_level_names)}\`,\`${esc(row.section_names)}\`,${row.add_to_calendar ? 1 : 0},\`${esc(row.calendar_date)}\`,${row.subject_id || 0})">
+                                    onclick="teacherOpenViewModal(${row.id},\`${esc(row.title)}\`,\`${esc(row.description)}\`,\`${esc(row.subject_name)}\`,\`${esc(row.grade_level_names)}\`,\`${esc(row.section_names)}\`,${row.add_to_calendar ? 1 : 0},\`${esc(row.calendar_date)}\`,${row.subject_id || 0}, ${row.role_id})">
                                     View
                                 </button>
                             </td>
@@ -985,7 +999,6 @@ function teacherLoadAnnouncements() {
         }
     });
 }
-
 document.getElementById('teacherOpenPostModal').addEventListener('click', function () { 
     teacherClosePostModal(); 
     teacherPostModal.style.display = 'flex'; 
