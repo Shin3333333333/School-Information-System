@@ -1088,7 +1088,7 @@ function studentCloseViewModal() { studentViewModal.style.display = 'none'; }
 
 function studentLoadAnnouncements() {
     $.ajax({
-        url: '{{ route("student.announcements.list") }}', method: 'GET',
+        url: '{{ route("student.announcements") }}', method: 'GET',
         success: function (response) {
             const tbody = $('#studentAnnouncementsTable');
             tbody.empty();

@@ -304,7 +304,6 @@
 @elseif(auth()->user()->role->name === 'Teacher')
 
     {{-- ── Teacher Dashboard ── --}}
-    {{-- Academic Year Display --}}
     <div class="role-banner banner-teacher">
         <div class="banner-content">
             <div>
@@ -351,40 +350,135 @@
         </div>
     </div>
 
-    <div class="dashboard-widgets">
-        <div class="card dashboard-widget-card">
-            <div class="card-header">
-                <span class="section-title">Quick Actions</span>
+    {{-- Row 1: Chart + Recent Announcements --}}
+    <div class="db-row c3-2" style="margin-bottom:20px;">
+        <div class="db-card">
+            <div class="db-card-head">
+                <div>
+                    <div class="db-card-title">Classes per Day</div>
+                    <div class="db-card-sub">This week's schedule</div>
+                </div>
             </div>
-            <div class="card-body" style="display:flex; flex-direction:column; gap:10px;">
-                <a href="{{ route('teacher.class-list') }}" class="btn btn-primary">View Class List</a>
-                <a href="{{ route('teacher.announcements') }}" class="btn btn-outline">Manage Announcements</a>
+            <div class="db-divider"></div>
+            <div class="db-card-body" style="padding-top:0;">
+                <div style="position:relative; height:200px;">
+                    <canvas id="teacherWeeklyChart"></canvas>
+                </div>
             </div>
         </div>
 
-        <div class="card dashboard-widget-card">
-            <div class="card-header">
-                <span class="section-title">Your Classes</span>
+        <div class="db-card">
+            <div class="db-card-head">
+                <div>
+                    <div class="db-card-title">Recent Announcements</div>
+                    <div class="db-card-sub">Latest school updates</div>
+                </div>
+                <a href="{{ route('teacher.announcements') }}" class="db-card-link">
+                    All
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </a>
             </div>
-            <div class="card-body">
-                @forelse($teacherClasses ?? [] as $class)
-                    <div style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px;">
-                        <div style="color:#f1f5f9; font-weight:600;">{{ $class->name }}</div>
-                        <div style="color:#475569; font-size:12px; margin-top:2px;">Grade {{ $class->grade_level_id }}</div>
+            <div class="db-divider"></div>
+            <div class="db-card-body" style="padding-top:0;">
+                @php $abColors = ['ab-blue','ab-amber','ab-green','ab-red']; @endphp
+                @forelse($recentAnnouncements ?? [] as $i => $ann)
+                <div class="ann-item">
+                    <div class="ann-badge {{ $abColors[$i % count($abColors)] }}">
+                        {{ \Carbon\Carbon::parse($ann->date_posted)->format('M') }}<br>
+                        {{ \Carbon\Carbon::parse($ann->date_posted)->format('d') }}
                     </div>
+                    <div style="min-width:0; flex:1;">
+                        <div class="ann-title">{{ $ann->title }}</div>
+                        <div class="ann-sub">{{ $ann->subject_name ?? 'General' }}</div>
+                    </div>
+                </div>
                 @empty
-                    <div class="empty-state" style="padding:20px 0;">
-                        <p>No classes assigned</p>
-                    </div>
+                <div class="empty-state" style="padding:28px 0;">
+                    <p>No announcements found.</p>
+                </div>
                 @endforelse
             </div>
         </div>
     </div>
 
+    {{-- Row 2: Your Classes --}}
+    <div class="db-card" style="margin-bottom:20px;">
+        <div class="db-card-head" style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <div class="db-card-title">Your Classes</div>
+                <div class="db-card-sub">Current teaching assignments</div>
+            </div>
+            <a href="{{ route('teacher.class-list') }}" class="db-card-link">
+                view all
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </a>
+        </div>
+        <div class="db-divider"></div>
+        <div style="padding:0 20px 12px;">
+            @forelse($teacherClasses ?? [] as $class)
+            <div class="usr-row">
+                <div class="usr-av av-blue">{{ strtoupper(substr($class->name,0,1)) }}</div>
+                <div style="flex:1; min-width:0;">
+                    <div class="usr-name">{{ $class->name }}</div>
+                    <div class="usr-mail">{{ $class->schedule ?? 'Schedule TBA' }}</div>
+                </div>
+                <span class="role-tag rt-teacher">{{ $class->student_count ?? 0 }} students</span>
+            </div>
+            @empty
+            <div class="empty-state" style="padding:24px 0;"><p>No classes assigned.</p></div>
+            @endforelse
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Teacher weekly classes chart
+        const teacherDays = @json(($teacherWeeklyClasses ?? collect())->keys());
+        const teacherCounts = @json(($teacherWeeklyClasses ?? collect())->values());
+
+        const darkTooltip = {
+            backgroundColor: '#1e293b', titleColor: '#475569', bodyColor: '#f1f5f9',
+            borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1, cornerRadius: 8, padding: 10,
+        };
+        const darkScales = {
+            y: { beginAtZero:true, ticks:{ stepSize:1, color:'#334155', font:{size:11} }, grid:{ color:'rgba(255,255,255,0.04)', drawBorder:false } },
+            x: { ticks:{ color:'#475569', font:{size:11} }, grid:{ display:false, drawBorder:false } }
+        };
+
+        if (teacherDays.length > 0) {
+            new Chart(document.getElementById('teacherWeeklyChart'), {
+                type: 'bar',
+                data: {
+                    labels: teacherDays,
+                    datasets: [{
+                        data: teacherCounts,
+                        backgroundColor: 'rgba(74,222,128,0.12)',
+                        borderColor: '#4ade80',
+                        borderWidth: 2,
+                        borderRadius: 7,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { ...darkTooltip, callbacks: { label: ctx => ` ${ctx.parsed.y} classes` } }
+                    },
+                    scales: darkScales
+                }
+            });
+        }
+    </script>
+
 @elseif(auth()->user()->role->name === 'Student')
 
     {{-- ── Student Dashboard ── --}}
-    {{-- Academic Year Display --}}
     <div class="role-banner banner-student">
         <div class="banner-content">
             <div>
@@ -431,47 +525,131 @@
         </div>
     </div>
 
-    <div class="dashboard-widgets">
-        <div class="card dashboard-widget-card">
-            <div class="card-header">
-                <span class="section-title">Quick Actions</span>
+    {{-- Row 1: Chart + Recent Announcements --}}
+    <div class="db-row c3-2" style="margin-bottom:20px;">
+        <div class="db-card">
+            <div class="db-card-head">
+                <div>
+                    <div class="db-card-title">Weekly Schedule Overview</div>
+                    <div class="db-card-sub">Classes per day this week</div>
+                </div>
             </div>
-            <div class="card-body" style="display:flex; flex-direction:column; gap:10px;">
-                <a href="{{ route('student.schedule') }}" class="btn btn-primary">View Schedule</a>
-                <a href="{{ route('student.announcements') }}" class="btn btn-outline">View Announcements</a>
+            <div class="db-divider"></div>
+            <div class="db-card-body" style="padding-top:0;">
+                <div style="position:relative; height:200px;">
+                    <canvas id="studentWeeklyChart"></canvas>
+                </div>
             </div>
         </div>
 
-        <div class="card dashboard-widget-card">
-            <div class="card-header">
-                <span class="section-title">Your Schedule</span>
+        <div class="db-card">
+            <div class="db-card-head">
+                <div>
+                    <div class="db-card-title">Recent Announcements</div>
+                    <div class="db-card-sub">Latest school updates</div>
+                </div>
+                <a href="{{ route('student.announcements') }}" class="db-card-link">
+                    All
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </a>
             </div>
-            <div class="card-body">
-                @forelse($studentClasses ?? [] as $class)
-                    <div style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px;">
-                        <div style="color:#f1f5f9; font-weight:600;">{{ $class->subject_name }}</div>
-                        <div style="color:#475569; font-size:12px; margin-top:2px;">{{ $class->teacher_name ?? 'TBA' }} • {{ $class->start_time ?? 'TBA' }}</div>
+            <div class="db-divider"></div>
+            <div class="db-card-body" style="padding-top:0;">
+                @php $abColors = ['ab-blue','ab-amber','ab-green','ab-red']; @endphp
+                @forelse($recentAnnouncements ?? [] as $i => $ann)
+                <div class="ann-item">
+                    <div class="ann-badge {{ $abColors[$i % count($abColors)] }}">
+                        {{ \Carbon\Carbon::parse($ann->date_posted)->format('M') }}<br>
+                        {{ \Carbon\Carbon::parse($ann->date_posted)->format('d') }}
                     </div>
+                    <div style="min-width:0; flex:1;">
+                        <div class="ann-title">{{ $ann->title }}</div>
+                        <div class="ann-sub">{{ $ann->subject_name ?? 'General' }}</div>
+                    </div>
+                </div>
                 @empty
-                    <div class="empty-state" style="padding:20px 0;">
-                        <p>No classes scheduled</p>
-                    </div>
+                <div class="empty-state" style="padding:28px 0;">
+                    <p>No announcements found.</p>
+                </div>
                 @endforelse
             </div>
         </div>
     </div>
 
-@else
-
-    <div class="empty-state">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-            <path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <h3>Dashboard unavailable</h3>
-        <p>No dashboard content found for your role.</p>
+    {{-- Row 2: Your Schedule --}}
+    <div class="db-card" style="margin-bottom:20px;">
+        <div class="db-card-head" style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <div class="db-card-title">Your Schedule</div>
+                <div class="db-card-sub">Upcoming classes</div>
+            </div>
+            <a href="{{ route('student.schedule') }}" class="db-card-link">
+                view all
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </a>
+        </div>
+        <div class="db-divider"></div>
+        <div style="padding:0 20px 12px;">
+            @forelse($studentClasses ?? [] as $class)
+            <div class="usr-row">
+                <div class="usr-av av-amber">{{ strtoupper(substr($class->subject_name,0,1)) }}</div>
+                <div style="flex:1; min-width:0;">
+                    <div class="usr-name">{{ $class->subject_name }}</div>
+                    <div class="usr-mail">{{ $class->teacher_name ?? 'TBA' }} • {{ $class->start_time ?? 'TBA' }}</div>
+                </div>
+                <span class="role-tag rt-student">{{ $class->room ?? '' }}</span>
+            </div>
+            @empty
+            <div class="empty-state" style="padding:24px 0;"><p>No classes scheduled.</p></div>
+            @endforelse
+        </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Student weekly classes chart
+        const studentDays = @json(($studentWeeklyClasses ?? collect())->keys());
+        const studentCounts = @json(($studentWeeklyClasses ?? collect())->values());
+
+        const darkTooltip = {
+            backgroundColor: '#1e293b', titleColor: '#475569', bodyColor: '#f1f5f9',
+            borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1, cornerRadius: 8, padding: 10,
+        };
+        const darkScales = {
+            y: { beginAtZero:true, ticks:{ stepSize:1, color:'#334155', font:{size:11} }, grid:{ color:'rgba(255,255,255,0.04)', drawBorder:false } },
+            x: { ticks:{ color:'#475569', font:{size:11} }, grid:{ display:false, drawBorder:false } }
+        };
+
+        if (studentDays.length > 0) {
+            new Chart(document.getElementById('studentWeeklyChart'), {
+                type: 'bar',
+                data: {
+                    labels: studentDays,
+                    datasets: [{
+                        data: studentCounts,
+                        backgroundColor: 'rgba(251,191,36,0.12)',
+                        borderColor: '#fbbf24',
+                        borderWidth: 2,
+                        borderRadius: 7,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { ...darkTooltip, callbacks: { label: ctx => ` ${ctx.parsed.y} classes` } }
+                    },
+                    scales: darkScales
+                }
+            });
+        }
+    </script>
 @endif
 
 <style>
