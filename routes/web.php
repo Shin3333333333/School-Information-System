@@ -160,6 +160,9 @@ Route::middleware('auth')->group(function () {
 
     // ── Student nav pages ─────────────────────────────────────────────────────
     Route::get('student/dashboard',     fn() => view('dashboard'))->name('student.dashboard');
+    Route::get('student/announcements/list', [AnnouncementController::class, 'studentAnnouncements'])
+    ->name('student.announcements.list')
+    ->middleware('auth');
     Route::get('student/announcements', fn() => view('announcements'))->name('student.announcements');
     Route::get('student/policies',      fn() => view('policies'))->name('student.policies');
 
