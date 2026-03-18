@@ -793,11 +793,13 @@
                         <circle cx="15" cy="10" r="1" fill="currentColor"/>
                     </svg>
                 </button>
-                <div class="avatar-wrap dropdown dropdown-end">
-                    <div tabindex="0" role="button" class="avatar">
-                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}{{ strtoupper(substr(strstr(auth()->user()->name, ' '), 1, 1)) }}
-                    </div>
+            <a href="{{ route('profile.index') }}" class="avatar-wrap" title="My Profile" style="text-decoration:none;">
+                <div class="avatar" style="cursor:pointer; transition:box-shadow .2s;"
+                    onmouseover="this.style.boxShadow='0 0 0 3px rgba(37,99,235,0.4)'"
+                    onmouseout="this.style.boxShadow=''">
+                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}{{ strtoupper(substr(strstr(auth()->user()->name, ' '), 1, 1)) }}
                 </div>
+            </a>
             </div>
         </header>
 
