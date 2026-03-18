@@ -109,13 +109,16 @@
     </div>
 </div>
 
-{{-- ADMIN: POST MODAL --}}
+{{-- ADMIN: POST / EDIT MODAL --}}
 <div id="postModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:200; align-items:center; justify-content:center; backdrop-filter:blur(3px);">
     <div style="background:#111827; border:1px solid rgba(255,255,255,0.08); border-radius:14px; width:540px; padding:24px; box-shadow:0 20px 60px rgba(0,0,0,0.5); margin:16px; max-height:90vh; overflow-y:auto;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
-            <h3 style="font-size:15px; font-weight:700; color:#e2e8f0;">Post Announcement</h3>
+            <h3 id="adminPostModalTitle" style="font-size:15px; font-weight:700; color:#e2e8f0;">Post Announcement</h3>
             <button onclick="adminClosePostModal()" style="background:none; border:none; cursor:pointer; color:#475569; font-size:18px; line-height:1; padding:4px;">✕</button>
         </div>
+
+        <input type="hidden" id="adminEditAnnouncementId">
+
         <div style="display:flex; flex-direction:column; gap:14px;">
             <div>
                 <label class="filter-label" style="display:block; margin-bottom:5px;">Title *</label>
@@ -170,16 +173,16 @@
                 </div>
             </div>
             {{-- ── End calendar toggle ─────────────────────────────────── --}}
-
         </div>
+
         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.06);">
             <button class="btn btn-outline" onclick="adminClosePostModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="adminSubmitAnnouncement()">Post Announcement</button>
+            <button class="btn btn-primary" onclick="adminSaveAnnouncement()" id="adminPostSubmitBtn">Post Announcement</button>
         </div>
     </div>
 </div>
 
-{{-- ADMIN: VIEW MODAL --}}
+{{-- ADMIN: VIEW MODAL (with Edit & Delete) --}}
 <div id="viewModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:200; align-items:center; justify-content:center; backdrop-filter:blur(3px);">
     <div style="background:#111827; border:1px solid rgba(255,255,255,0.08); border-radius:14px; width:480px; padding:24px; box-shadow:0 20px 60px rgba(0,0,0,0.5); margin:16px;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
@@ -209,14 +212,22 @@
                 <div style="font-size:10.5px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px;">Posted By</div>
                 <div id="modalPostedBy" style="font-size:13px; color:#60a5fa; font-weight:600;"></div>
             </div>
-            {{-- Calendar indicator (shown only if add_to_calendar = 1) --}}
+            {{-- Calendar indicator --}}
             <div id="modalCalendarInfo" style="display:none; background:#0f172a; border-radius:8px; padding:12px; border:1px solid rgba(37,99,235,0.25);">
                 <div style="font-size:10.5px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px;">📅 On Calendar</div>
                 <div id="modalCalendarDate" style="font-size:13px; color:#60a5fa; font-weight:600;"></div>
             </div>
         </div>
-        <div style="display:flex; justify-content:flex-end;">
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
             <button class="btn btn-outline" onclick="closeViewModal()">Close</button>
+            <button class="btn btn-primary" onclick="adminOpenEditModal(currentAnnouncement.id)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Edit
+            </button>
+            <button class="btn btn-danger" onclick="adminConfirmDelete(currentAnnouncement.id)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Delete
+            </button>
         </div>
     </div>
 </div>
@@ -226,6 +237,7 @@ $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('cont
 
 const viewModal = document.getElementById('viewModal');
 const postModal = document.getElementById('postModal');
+let currentAnnouncement = {}; // for view modal
 
 // ── Calendar toggle (admin) ───────────────────────────────────────
 function adminToggleCalDate(show) {
@@ -236,6 +248,7 @@ function adminToggleCalDate(show) {
 
 // ── View Modal ────────────────────────────────────────────────────
 function openViewModal(id, title, description, subject_name, section_names, posted_by, add_to_calendar, calendar_date) {
+    currentAnnouncement = { id, title, description, subject_name, section_names, posted_by, add_to_calendar, calendar_date };
     document.getElementById('modalTitle').textContent       = title;
     document.getElementById('modalDescription').textContent = description || '—';
     document.getElementById('modalSubject').textContent     = subject_name;
@@ -249,67 +262,164 @@ function openViewModal(id, title, description, subject_name, section_names, post
     } else {
         calInfo.style.display = 'none';
     }
-
     viewModal.style.display = 'flex';
 }
 function closeViewModal() { viewModal.style.display = 'none'; }
 
-// ── Post Modal ────────────────────────────────────────────────────
+// ── Post / Edit Modal ─────────────────────────────────────────────
 function adminClosePostModal() {
     postModal.style.display = 'none';
+    document.getElementById('adminEditAnnouncementId').value = '';
     document.getElementById('postTitle').value       = '';
     document.getElementById('postDescription').value = '';
     document.getElementById('postSubject').value     = '';
     document.getElementById('postGradeLevel').value  = '';
     document.getElementById('postSectionCheckboxes').innerHTML = '<span style="color:#334155; font-size:12px;">Select a grade level to load sections</span>';
-    // Reset calendar fields
     document.getElementById('adminAddToCalendar').checked = false;
     adminToggleCalDate(false);
+    document.getElementById('adminPostModalTitle').textContent = 'Post Announcement';
+    document.getElementById('adminPostSubmitBtn').textContent = 'Post Announcement';
 }
 
-function adminSubmitAnnouncement() {
-    const title      = document.getElementById('postTitle').value.trim();
-    const desc       = document.getElementById('postDescription').value.trim();
-    const subj       = document.getElementById('postSubject').value;
-    const sections   = [...document.querySelectorAll('#postSectionCheckboxes input:checked')].map(c => c.value);
-    const addToCal   = document.getElementById('adminAddToCalendar').checked;
-    const calDate    = document.getElementById('adminCalendarDate').value;
+// ── Open edit modal ───────────────────────────────────────────────
+function adminOpenEditModal(id) {
+    const loadingModal = document.getElementById('loading-modal');
+    if (loadingModal) loadingModal.style.display = 'flex';
+
+    $.ajax({
+        url: '/announcements/' + id,
+        method: 'GET',
+        success: function(response) {
+            if (loadingModal) loadingModal.style.display = 'none';
+            if (response.status === 'success') {
+                const a = response.data;
+                document.getElementById('adminEditAnnouncementId').value = a.id;
+                document.getElementById('postTitle').value = a.title;
+                document.getElementById('postDescription').value = a.description || '';
+                document.getElementById('postSubject').value = a.subject_id;
+                document.getElementById('adminAddToCalendar').checked = !!a.add_to_calendar;
+                adminToggleCalDate(!!a.add_to_calendar);
+                if (a.add_to_calendar && a.calendar_date) {
+                    document.getElementById('adminCalendarDate').value = a.calendar_date;
+                }
+                // Load grade level and sections
+                document.getElementById('postGradeLevel').value = a.grade_level_id;
+                loadSectionsForGrade(a.grade_level_id, a.section_ids);
+                document.getElementById('adminPostModalTitle').textContent = 'Edit Announcement';
+                document.getElementById('adminPostSubmitBtn').textContent = 'Update Announcement';
+                postModal.style.display = 'flex';
+            } else {
+                showPopup('Error', response.message, 'error');
+            }
+        },
+        error: function(xhr) {
+            if (loadingModal) loadingModal.style.display = 'none';
+            showPopup('Error', xhr.responseJSON?.message || 'Failed to load announcement.', 'error');
+        }
+    });
+}
+
+// Helper to load sections and check the ones belonging to the announcement
+function loadSectionsForGrade(gradeId, selectedSectionIds = []) {
+    const wrap = document.getElementById('postSectionCheckboxes');
+    wrap.innerHTML = '<span style="color:#334155; font-size:12px;">Loading...</span>';
+    if (!gradeId) {
+        wrap.innerHTML = '<span style="color:#334155; font-size:12px;">Select a grade level to load sections</span>';
+        return;
+    }
+    $.get(`/fields/sections/${gradeId}`, function (response) {
+        wrap.innerHTML = '';
+        if (response.status === 'success' && response.data.length > 0) {
+            response.data.forEach(sec => {
+                const checked = selectedSectionIds.includes(sec.id) ? 'checked' : '';
+                wrap.innerHTML += `
+                    <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:#1e293b; border:1px solid rgba(255,255,255,0.07); padding:5px 10px; border-radius:6px; font-size:12px; color:#94a3b8;">
+                        <input type="checkbox" value="${sec.id}" ${checked} style="accent-color:#2563eb;">
+                        ${sec.section_name}
+                    </label>`;
+            });
+        } else {
+            wrap.innerHTML = '<span style="color:#334155; font-size:12px;">No sections found.</span>';
+        }
+    });
+}
+
+// ── Save (Create or Update) ───────────────────────────────────────
+function adminSaveAnnouncement() {
+    const editId = document.getElementById('adminEditAnnouncementId').value;
+    const title  = document.getElementById('postTitle').value.trim();
+    const desc   = document.getElementById('postDescription').value.trim();
+    const subj   = document.getElementById('postSubject').value;
+    const sections = [...document.querySelectorAll('#postSectionCheckboxes input:checked')].map(c => c.value);
+    const addToCal = document.getElementById('adminAddToCalendar').checked;
+    const calDate  = document.getElementById('adminCalendarDate').value;
 
     if (!title)           { showPopup('Validation', 'Title is required.', 'warning'); return; }
     if (!subj)            { showPopup('Validation', 'Please select a subject.', 'warning'); return; }
     if (!sections.length) { showPopup('Validation', 'Please select at least one section.', 'warning'); return; }
     if (addToCal && !calDate) { showPopup('Validation', 'Please select a calendar date.', 'warning'); return; }
 
+    const data = {
+        title,
+        description     : desc,
+        subject_id      : subj,
+        sections,
+        add_to_calendar : addToCal ? 1 : 0,
+        calendar_date   : addToCal ? calDate : null,
+    };
+    if (editId) data.id = editId;
+
     adminClosePostModal();
     const loadingModal = document.getElementById('loading-modal');
     if (loadingModal) loadingModal.style.display = 'flex';
 
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    $.ajax({
+        url:    editId ? '{{ route("announcements.update") }}' : '{{ route("announcements.store") }}',
+        method: 'POST',
+        data:   data,
+        success: function (response) {
+            if (loadingModal) loadingModal.style.display = 'none';
+            if (response.status === 'success') {
+                showPopup('Success', response.message, 'success');
+                loadAnnouncements();
+            } else {
+                showPopup('Error', response.message, 'error');
+            }
+        },
+        error: function (xhr) {
+            if (loadingModal) loadingModal.style.display = 'none';
+            const msg = xhr.responseJSON?.message || 'An error occurred.';
+            showPopup('Error', msg, 'error');
+        }
+    });
+}
+
+// ── Confirm Delete ─────────────────────────────────────────────────
+function adminConfirmDelete(id) {
+    showConfirmationModal('Delete Announcement', 'Are you sure you want to delete this announcement?', function () {
+        const loadingModal = document.getElementById('loading-modal');
+        if (loadingModal) loadingModal.style.display = 'flex';
+
         $.ajax({
-            url:    '{{ route("announcements.store") }}',
+            url:    '{{ route("announcements.destroy") }}',
             method: 'POST',
-            data: {
-                title,
-                description     : desc,
-                subject_id      : subj,
-                sections,
-                add_to_calendar : addToCal ? 1 : 0,
-                calendar_date   : addToCal ? calDate : null,
-            },
+            data:   { id: id },
             success: function (response) {
                 if (loadingModal) loadingModal.style.display = 'none';
-                setTimeout(() => {
-                    if (response.status === 'success') { showPopup('Success', response.message, 'success'); loadAnnouncements(); }
-                    else                               { showPopup('Error', response.message, 'error'); }
-                }, 100);
+                if (response.status === 'success') {
+                    showPopup('Deleted', response.message, 'success');
+                    loadAnnouncements();
+                } else {
+                    showPopup('Error', response.message, 'error');
+                }
             },
             error: function (xhr) {
                 if (loadingModal) loadingModal.style.display = 'none';
-                const msg = xhr.responseJSON?.message || 'An error occurred.';
-                setTimeout(() => showPopup('Error', msg, 'error'), 100);
+                const msg = xhr.responseJSON?.message || 'Delete failed.';
+                showPopup('Error', msg, 'error');
             }
         });
-    }));
+    });
 }
 
 // ── Load subjects & grades ────────────────────────────────────────
@@ -339,11 +449,15 @@ function loadGradeLevels() {
     });
 }
 
+// When grade changes, load sections (for create)
 document.getElementById('postGradeLevel').addEventListener('change', function () {
     const gradeId = this.value;
     const wrap    = document.getElementById('postSectionCheckboxes');
     wrap.innerHTML = '<span style="color:#334155; font-size:12px;">Loading...</span>';
-    if (!gradeId) { wrap.innerHTML = '<span style="color:#334155; font-size:12px;">Select a grade level to load sections</span>'; return; }
+    if (!gradeId) {
+        wrap.innerHTML = '<span style="color:#334155; font-size:12px;">Select a grade level to load sections</span>';
+        return;
+    }
     $.get(`{{ url('fields/sections') }}/${gradeId}`, function (response) {
         wrap.innerHTML = '';
         if (response.status === 'success' && response.data.length > 0) {
@@ -370,7 +484,6 @@ function loadAnnouncements() {
             if (response.status === 'success' && response.data.length > 0) {
                 $.each(response.data, function (i, row) {
                     const e = s => (s||'').toString().replace(/`/g,"'").replace(/\\/g,'\\\\');
-                    // Calendar badge if add_to_calendar is set
                     const calBadge = row.add_to_calendar
                         ? `<span class="cal-badge">📅 ${row.calendar_date || 'On Calendar'}</span>`
                         : '';
@@ -388,14 +501,7 @@ function loadAnnouncements() {
                             <td>${row.subject_name || '—'}</td>
                             <td>${row.grade_level_names || '—'}</td>
                             <td>${row.section_names || '—'}</td>
-                            <td>
-                                <span style="display:inline-flex; align-items:center; gap:7px;">
-                                    <span style="width:26px; height:26px; border-radius:50%; background:rgba(37,99,235,0.18); color:#60a5fa; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0;">
-                                        ${(row.posted_by||'?').charAt(0).toUpperCase()}
-                                    </span>
-                                    <span style="color:#94a3b8; font-size:13px;">${row.posted_by || '—'}</span>
-                                </span>
-                            </td>
+                            <td>${row.posted_by || '—'}</td>
                         </tr>
                     `);
                 });
@@ -424,6 +530,7 @@ $(document).ready(function () {
     loadGradeLevels();
 });
 </script>
+
 
 @elseif(auth()->user()->role->name === 'Teacher')
 

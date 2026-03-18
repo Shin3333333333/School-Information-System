@@ -128,7 +128,7 @@ Route::middleware('auth')->group(function () {
     Route::get('announcements/{id}/sections', [AnnouncementController::class, 'getSections'])
         ->where('id', '[0-9]+')
         ->name('announcements.sections');
-
+    Route::get('announcements/{id}', [AnnouncementController::class, 'show'])->name('announcements.show');
     // ── Calendar ──────────────────────────────────────────────────────────────
     // All three use CalendarController@index which passes $role to the blade
     Route::get('admin/calendar',       [CalendarController::class, 'index'])->name('admin.calendar');
@@ -160,4 +160,5 @@ Route::middleware('auth')->group(function () {
     Route::post('profile/update',  [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
     Route::post('profile/password',[App\Http\Controllers\ProfileController::class, 'changePassword'])->name('profile.password');
 Route::delete('students/hard-delete/{id}', [StudentController::class, 'hardDestroy'])->name('students.hard-delete');
+Route::get('announcements/{id}', [AnnouncementController::class, 'show'])->name('announcements.show');
 });

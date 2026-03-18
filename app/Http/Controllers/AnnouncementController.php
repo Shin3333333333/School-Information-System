@@ -36,7 +36,6 @@ class AnnouncementController extends Controller
             'calendar_date'  => 'nullable|date|required_if:add_to_calendar,1',
         ]);
 
-        // Insert announcement using your stored procedure
         try {
             $announcementData = [
                 'title'           => $request->title,
@@ -49,8 +48,7 @@ class AnnouncementController extends Controller
             ];
 
             $result = DB::select("CALL usp_sql_actions(?, ?)", [2, json_encode($announcementData)]);
-            
-            // Get the announcement ID from the result
+
             $announcementId = null;
             if (!empty($result) && isset($result[0]->announcement_id)) {
                 $announcementId = $result[0]->announcement_id;
@@ -60,7 +58,6 @@ class AnnouncementController extends Controller
                 return response()->json(['status' => 'error', 'message' => 'Failed to retrieve announcement ID.'], 500);
             }
 
-            // Insert sections
             foreach ($request->sections as $sectionId) {
                 $gradeLevel = DB::table('section')
                     ->where('id', (int) $sectionId)
@@ -80,6 +77,33 @@ class AnnouncementController extends Controller
         }
     }
 
+    // ── Fetch single announcement for editing ─────────────────────────────────
+    public function show($id)
+    {
+        try {
+            $data = DB::select("CALL usp_get_announcements_data(?, ?)", [4, (int) $id]);
+
+            if (empty($data)) {
+                return response()->json(['status' => 'error', 'message' => 'Announcement not found.'], 404);
+            }
+
+            $announcement = (array) $data[0];
+
+            // Get section IDs for this announcement
+            $sectionIds = DB::table('announcement_sections')
+                ->where('announcement_id', (int) $id)
+                ->pluck('section_id')
+                ->toArray();
+
+            $announcement['section_ids'] = $sectionIds;
+
+            return response()->json(['status' => 'success', 'data' => $announcement]);
+        } catch (\Exception $e) {
+            Log::error("Announcement Show Error: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);
+        }
+    }
+
     // ── Update announcement ───────────────────────────────────────────────────
     public function update(Request $request)
     {
@@ -95,7 +119,6 @@ class AnnouncementController extends Controller
         ]);
 
         try {
-            // Update announcement using stored procedure
             $updateData = [
                 'id'              => (int) $request->id,
                 'title'           => $request->title,
@@ -109,7 +132,7 @@ class AnnouncementController extends Controller
 
             DB::select("CALL usp_sql_actions(?, ?)", [4, json_encode($updateData)]);
 
-            // Delete existing sections
+            // Delete existing sections (could be converted to SP mode 22 if desired)
             DB::table('announcement_sections')
                 ->where('announcement_id', $request->id)
                 ->delete();
@@ -146,16 +169,8 @@ class AnnouncementController extends Controller
         $request->validate(['id' => 'required|integer']);
 
         try {
-            // Delete sections first (foreign key constraint)
-            DB::table('announcement_sections')
-                ->where('announcement_id', $request->id)
-                ->delete();
-
-            // Delete announcement
-            DB::table('announcements')
-                ->where('id', $request->id)
-                ->where('user_id', auth()->id())
-                ->delete();
+            // Use stored procedure mode 21 to delete announcement and its sections
+            DB::statement("CALL usp_sql_actions(?, ?)", [21, json_encode(['id' => (int) $request->id])]);
 
             return response()->json(['status' => 'success', 'message' => 'Announcement deleted successfully.']);
         } catch (\Exception $e) {
@@ -169,16 +184,14 @@ class AnnouncementController extends Controller
     {
         try {
             $data = DB::select("CALL usp_get_announcements_data(?, ?)", [1, auth()->id()]);
-            
-            // Handle case when no data
+
             if (empty($data)) {
                 return response()->json(['status' => 'success', 'data' => []]);
             }
-            
+
             return response()->json(['status' => 'success', 'data' => $data]);
         } catch (\Exception $e) {
             Log::error("Teacher Announcements Error: " . $e->getMessage());
-            // Return empty array instead of error for teachers with no announcements
             return response()->json(['status' => 'success', 'data' => []]);
         }
     }
@@ -188,12 +201,11 @@ class AnnouncementController extends Controller
     {
         try {
             $data = DB::select("CALL usp_get_announcements_data(?, ?)", [2, auth()->id()]);
-            
-            // Handle case when no data
+
             if (empty($data)) {
                 return response()->json(['status' => 'success', 'data' => []]);
             }
-            
+
             return response()->json(['status' => 'success', 'data' => $data]);
         } catch (\Exception $e) {
             Log::error("Student Announcements Error: " . $e->getMessage());
@@ -206,12 +218,11 @@ class AnnouncementController extends Controller
     {
         try {
             $data = DB::select("CALL usp_get_announcements_data(?, ?)", [3, 0]);
-            
-            // Handle case when no data
+
             if (empty($data)) {
                 return response()->json(['status' => 'success', 'data' => []]);
             }
-            
+
             return response()->json(['status' => 'success', 'data' => $data]);
         } catch (\Exception $e) {
             Log::error("Admin Announcements Fetch Error: " . $e->getMessage());
@@ -228,21 +239,9 @@ class AnnouncementController extends Controller
     public function getSections($id)
     {
         try {
-            $rows = DB::table('announcement_sections as ans')
-                ->join('section as s',     's.id',  '=', 'ans.section_id')
-                ->join('grade_level as gl', 'gl.id', '=', 's.grade_level_id')
-                ->where('ans.announcement_id', (int) $id)
-                ->orderBy('gl.id')
-                ->orderBy('s.section_name')
-                ->select(
-                    'ans.section_id',
-                    's.section_name',
-                    's.grade_level_id',
-                    'gl.grade_level_name'
-                )
-                ->get();
+            $data = DB::select("CALL usp_get_announcements_data(?, ?)", [5, (int) $id]);
 
-            return response()->json(['status' => 'success', 'data' => $rows]);
+            return response()->json(['status' => 'success', 'data' => $data]);
         } catch (\Exception $e) {
             Log::error("Announcement getSections Error: " . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);
