@@ -25,8 +25,8 @@
                     </svg>
                 </div>
             </div>
-            <div class="db-stat-num">{{ number_format($totalStudents) }}</div>
-            <div class="db-stat-foot"><span class="chip">+{{ $newThisMonth }}</span> enrolled this month</div>
+            <div class="db-stat-num">{{ number_format($totalStudents ?? 0) }}</div>
+            <div class="db-stat-foot"><span class="chip">+{{ $newThisMonth ?? 0 }}</span> enrolled this month</div>
         </div>
 
         <div class="db-stat s-green">
@@ -40,8 +40,8 @@
                     </svg>
                 </div>
             </div>
-            <div class="db-stat-num">{{ number_format($totalTeachers) }}</div>
-            <div class="db-stat-foot"><span class="chip">+{{ $newTeachersThisMonth }}</span> joined this month</div>
+            <div class="db-stat-num">{{ number_format($totalTeachers ?? 0) }}</div>
+            <div class="db-stat-foot"><span class="chip">+{{ $newTeachersThisMonth ?? 0 }}</span> joined this month</div>
         </div>
 
         <div class="db-stat s-amber">
@@ -54,7 +54,7 @@
                     </svg>
                 </div>
             </div>
-            <div class="db-stat-num">{{ number_format($totalSections) }}</div>
+            <div class="db-stat-num">{{ number_format($totalSections ?? 0) }}</div>
             <div class="db-stat-foot">Across all grade levels</div>
         </div>
 
@@ -68,7 +68,7 @@
                     </svg>
                 </div>
             </div>
-            <div class="db-stat-num">{{ number_format($totalStudents + $totalTeachers) }}</div>
+            <div class="db-stat-num">{{ number_format(($totalStudents ?? 0) + ($totalTeachers ?? 0)) }}</div>
             <div class="db-stat-foot">Students &amp; teachers combined</div>
         </div>
 
@@ -81,8 +81,23 @@
             <div class="db-card-head">
                 <div>
                     <div class="db-card-title">School Overview</div>
-                    <div class="db-card-sub">Academic Year 2024–2025</div>
+                    <div class="db-card-sub">
+                        Academic Year 
+                        @if($activeAcademicYear)
+                            <strong style="color:#f1f5f9;">{{ $activeAcademicYear->year_label }}</strong>
+                        @else
+                            <span style="color:#ef4444; font-weight:600;">Not Set</span>
+                        @endif
+                    </div>
                 </div>
+                @if(!$activeAcademicYear)
+                <a href="{{ route('academic-years.index') }}" class="db-card-link" style="color:#f87171; font-weight:700;">
+                    Set Now
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                </a>
+                @endif
             </div>
             <div class="db-divider"></div>
             <div class="db-card-body" style="padding-top:0;">
@@ -97,7 +112,7 @@
                         </div>
                         <div>
                             <div class="kpi-label">Announcements</div>
-                            <div class="kpi-val">{{ $totalAnnouncements }}</div>
+                            <div class="kpi-val">{{ $totalAnnouncements ?? 0 }}</div>
                         </div>
                     </div>
                     <div class="kpi-box">
@@ -109,7 +124,7 @@
                         </div>
                         <div>
                             <div class="kpi-label">Events</div>
-                            <div class="kpi-val">{{ $totalEvents }}</div>
+                            <div class="kpi-val">{{ $totalEvents ?? 0 }}</div>
                         </div>
                     </div>
                     <div class="kpi-box">
@@ -120,7 +135,7 @@
                         </div>
                         <div>
                             <div class="kpi-label">Active Policies</div>
-                            <div class="kpi-val">{{ $totalActivePolicies }}</div>
+                            <div class="kpi-val">{{ $totalActivePolicies ?? 0 }}</div>
                         </div>
                     </div>
                 </div>
@@ -178,7 +193,7 @@
             <div class="db-divider"></div>
             <div class="db-card-body" style="padding-top:0;">
                 @php $abColors = ['ab-blue','ab-amber','ab-green','ab-red']; @endphp
-                @forelse($upcomingEvents as $i => $ev)
+                @forelse($upcomingEvents ?? [] as $i => $ev)
                 <div class="ann-item">
                     <div class="ann-badge {{ $abColors[$i % count($abColors)] }}">
                         {{ \Carbon\Carbon::parse($ev->date_posted)->format('M') }}<br>
@@ -186,7 +201,7 @@
                     </div>
                     <div style="min-width:0; flex:1;">
                         <div class="ann-title">{{ $ev->title }}</div>
-                        <div class="ann-sub">{{ $ev->subject_name }} — {{ $ev->section_names }}</div>
+                        <div class="ann-sub">{{ $ev->subject_name ?? 'General' }} — {{ $ev->section_names ?? 'All' }}</div>
                     </div>
                 </div>
                 @empty
@@ -219,7 +234,7 @@
                 $avColors = ['admin'=>'av-blue','teacher'=>'av-green','student'=>'av-amber'];
                 $rtColors = ['admin'=>'rt-admin','teacher'=>'rt-teacher','student'=>'rt-student'];
             @endphp
-            @forelse($recentUsers as $ru)
+            @forelse($recentUsers ?? [] as $ru)
             @php
                 $role     = strtolower($ru->role_name);
                 $initials = strtoupper(substr($ru->name,0,1)).strtoupper(substr(strstr($ru->name,' '),1,1));
@@ -241,10 +256,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const gradeLabels = @json($studentsPerGrade->pluck('grade_level_name'));
-        const gradeCounts = @json($studentsPerGrade->pluck('total'));
-        const trendLabels = @json($enrollmentTrend->pluck('month'));
-        const trendCounts = @json($enrollmentTrend->pluck('total'));
+        const gradeLabels = @json(($studentsPerGrade ?? collect())->pluck('grade_level_name'));
+        const gradeCounts = @json(($studentsPerGrade ?? collect())->pluck('total'));
+        const trendLabels = @json(($enrollmentTrend ?? collect())->pluck('month'));
+        const trendCounts = @json(($enrollmentTrend ?? collect())->pluck('total'));
 
         const darkTooltip = {
             backgroundColor: '#1e293b', titleColor: '#475569', bodyColor: '#f1f5f9',
@@ -255,37 +270,58 @@
             x: { ticks:{ color:'#475569', font:{size:11} }, grid:{ display:false, drawBorder:false } }
         };
 
-        new Chart(document.getElementById('studentsPerGradeChart'), {
-            type: 'bar',
-            data: {
-                labels: gradeLabels,
-                datasets: [{ data: gradeCounts,
-                    backgroundColor: ['rgba(96,165,250,0.12)','rgba(74,222,128,0.12)','rgba(251,191,36,0.12)','rgba(248,113,113,0.12)','rgba(167,139,250,0.12)','rgba(34,211,238,0.12)'],
-                    borderColor:      ['#60a5fa','#4ade80','#fbbf24','#f87171','#a78bfa','#22d3ee'],
-                    borderWidth: 2, borderRadius: 7, borderSkipped: false,
-                }]
-            },
-            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{...darkTooltip, callbacks:{label:ctx=>` ${ctx.parsed.y} students`}} }, scales: darkScales }
-        });
+        if (gradeLabels.length > 0) {
+            new Chart(document.getElementById('studentsPerGradeChart'), {
+                type: 'bar',
+                data: {
+                    labels: gradeLabels,
+                    datasets: [{ data: gradeCounts,
+                        backgroundColor: ['rgba(96,165,250,0.12)','rgba(74,222,128,0.12)','rgba(251,191,36,0.12)','rgba(248,113,113,0.12)','rgba(167,139,250,0.12)','rgba(34,211,238,0.12)'],
+                        borderColor:      ['#60a5fa','#4ade80','#fbbf24','#f87171','#a78bfa','#22d3ee'],
+                        borderWidth: 2, borderRadius: 7, borderSkipped: false,
+                    }]
+                },
+                options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{...darkTooltip, callbacks:{label:ctx=>` ${ctx.parsed.y} students`}} }, scales: darkScales }
+            });
+        }
 
-        new Chart(document.getElementById('enrollmentTrendChart'), {
-            type: 'line',
-            data: {
-                labels: trendLabels,
-                datasets: [{ data: trendCounts,
-                    borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.06)',
-                    borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#60a5fa',
-                    pointBorderColor:'#111827', pointBorderWidth:2, fill:true, tension:0.42,
-                }]
-            },
-            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{...darkTooltip, callbacks:{label:ctx=>` ${ctx.parsed.y} new students`}} }, scales: darkScales }
-        });
+        if (trendLabels.length > 0) {
+            new Chart(document.getElementById('enrollmentTrendChart'), {
+                type: 'line',
+                data: {
+                    labels: trendLabels,
+                    datasets: [{ data: trendCounts,
+                        borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.06)',
+                        borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#60a5fa',
+                        pointBorderColor:'#111827', pointBorderWidth:2, fill:true, tension:0.42,
+                    }]
+                },
+                options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{...darkTooltip, callbacks:{label:ctx=>` ${ctx.parsed.y} new students`}} }, scales: darkScales }
+            });
+        }
     </script>
 
 @elseif(auth()->user()->role->name === 'Teacher')
 
     {{-- ── Teacher Dashboard ── --}}
-    <div class="stats-grid" style="margin-bottom:20px;">
+    {{-- Academic Year Display --}}
+    <div class="role-banner banner-teacher">
+        <div class="banner-content">
+            <div>
+                <div class="banner-title">Welcome back, {{ auth()->user()->name }}!</div>
+                <div class="banner-subtitle">
+                    Academic Year: 
+                    @if($activeAcademicYear)
+                        <strong>{{ $activeAcademicYear->year_label }}</strong>
+                    @else
+                        <span style="color:#fbbf24;">Year not set</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:20px; margin-top:16px;">
         <div class="stat-card">
             <div class="stat-header">
                 <span class="stat-label">Classes Today</span>
@@ -296,8 +332,8 @@
                     </svg>
                 </div>
             </div>
-            <div class="stat-value">3</div>
-            <div class="stat-meta">Scheduled for today</div>
+            <div class="stat-value">{{ count($teacherClasses ?? []) }}</div>
+            <div class="stat-meta">Assigned to you</div>
         </div>
 
         <div class="stat-card">
@@ -310,7 +346,7 @@
                     </svg>
                 </div>
             </div>
-            <div class="stat-value">120</div>
+            <div class="stat-value">{{ $totalStudents ?? 0 }}</div>
             <div class="stat-meta">Across all classes</div>
         </div>
     </div>
@@ -328,16 +364,19 @@
 
         <div class="card dashboard-widget-card">
             <div class="card-header">
-                <span class="section-title">Upcoming Events</span>
+                <span class="section-title">Your Classes</span>
             </div>
             <div class="card-body">
-                <div class="empty-state" style="padding:20px 0;">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                        <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    <p>No upcoming events</p>
-                </div>
+                @forelse($teacherClasses ?? [] as $class)
+                    <div style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px;">
+                        <div style="color:#f1f5f9; font-weight:600;">{{ $class->name }}</div>
+                        <div style="color:#475569; font-size:12px; margin-top:2px;">Grade {{ $class->grade_level_id }}</div>
+                    </div>
+                @empty
+                    <div class="empty-state" style="padding:20px 0;">
+                        <p>No classes assigned</p>
+                    </div>
+                @endforelse
             </div>
         </div>
     </div>
@@ -345,7 +384,24 @@
 @elseif(auth()->user()->role->name === 'Student')
 
     {{-- ── Student Dashboard ── --}}
-    <div class="stats-grid" style="margin-bottom:20px;">
+    {{-- Academic Year Display --}}
+    <div class="role-banner banner-student">
+        <div class="banner-content">
+            <div>
+                <div class="banner-title">Welcome, {{ auth()->user()->name }}!</div>
+                <div class="banner-subtitle">
+                    Academic Year: 
+                    @if($activeAcademicYear)
+                        <strong>{{ $activeAcademicYear->year_label }}</strong>
+                    @else
+                        <span style="color:#fbbf24;">Year not set</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:20px; margin-top:16px;">
         <div class="stat-card">
             <div class="stat-header">
                 <span class="stat-label">Classes Today</span>
@@ -356,8 +412,8 @@
                     </svg>
                 </div>
             </div>
-            <div class="stat-value">3</div>
-            <div class="stat-meta">Scheduled for today</div>
+            <div class="stat-value">{{ count($studentClasses ?? []) }}</div>
+            <div class="stat-meta">Scheduled today</div>
         </div>
 
         <div class="stat-card">
@@ -370,7 +426,7 @@
                     </svg>
                 </div>
             </div>
-            <div class="stat-value">2</div>
+            <div class="stat-value">{{ $unreadAnnouncements ?? 0 }}</div>
             <div class="stat-meta">Unread</div>
         </div>
     </div>
@@ -388,16 +444,19 @@
 
         <div class="card dashboard-widget-card">
             <div class="card-header">
-                <span class="section-title">Upcoming Events</span>
+                <span class="section-title">Your Schedule</span>
             </div>
             <div class="card-body">
-                <div class="empty-state" style="padding:20px 0;">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                        <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    <p>No upcoming events</p>
-                </div>
+                @forelse($studentClasses ?? [] as $class)
+                    <div style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px;">
+                        <div style="color:#f1f5f9; font-weight:600;">{{ $class->subject_name }}</div>
+                        <div style="color:#475569; font-size:12px; margin-top:2px;">{{ $class->teacher_name ?? 'TBA' }} • {{ $class->start_time ?? 'TBA' }}</div>
+                    </div>
+                @empty
+                    <div class="empty-state" style="padding:20px 0;">
+                        <p>No classes scheduled</p>
+                    </div>
+                @endforelse
             </div>
         </div>
     </div>
@@ -456,6 +515,7 @@
 .db-card-sub   { font-size:11.5px; color:#334155; margin-top:2px; }
 .db-card-link  { font-size:12px; color:#60a5fa; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:3px; transition:gap .15s; white-space:nowrap; }
 .db-card-link:hover { gap:6px; color:#93c5fd; }
+.db-card-link[style*="f87171"]:hover { color:#fb7185; }
 .db-card-body  { padding:0 20px 18px; }
 .db-divider    { height:1px; background:rgba(255,255,255,0.05); margin:0 20px 14px; }
 
@@ -493,7 +553,133 @@
 .rt-teacher { background:rgba(22,163,74,0.18);   color:#4ade80; }
 .rt-student { background:rgba(217,119,6,0.18);   color:#fbbf24; }
 
+/* ── Role-specific banners ──────────────────────────────────── */
+.role-banner {
+    background: linear-gradient(135deg, #111827 0%, #0f172a 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    animation: slideDown .4s ease-out;
+}
+
+.role-banner.banner-teacher {
+    border-color: rgba(74,222,128,0.2);
+    background: linear-gradient(135deg, rgba(74,222,128,0.08) 0%, #111827 100%);
+}
+
+.role-banner.banner-student {
+    border-color: rgba(251,191,36,0.2);
+    background: linear-gradient(135deg, rgba(251,191,36,0.08) 0%, #111827 100%);
+}
+
+.banner-content { display: flex; align-items: center; justify-content: space-between; }
+.banner-title { font-size: 16px; font-weight: 700; color: #f1f5f9; }
+.banner-subtitle { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+}
+
+.stat-card {
+    background: #111827;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all .2s;
+}
+
+.stat-card:hover {
+    border-color: rgba(255,255,255,0.14);
+    background: #0f172a;
+}
+
+.stat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #475569;
+    letter-spacing: 0.5px;
+}
+
+.stat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stat-icon.amber {
+    background: rgba(217, 119, 6, 0.15);
+    color: #fbbf24;
+}
+
+.stat-icon.blue {
+    background: rgba(37, 99, 235, 0.15);
+    color: #60a5fa;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #f1f5f9;
+    line-height: 1;
+    margin-bottom: 6px;
+    font-family: var(--font-display);
+}
+
+.stat-meta {
+    font-size: 11.5px;
+    color: #475569;
+}
+
+.dashboard-widgets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px;
+}
+
+.dashboard-widget-card {
+    background: #111827;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.card-body {
+    padding: 12px 16px;
+}
+
+.empty-state {
+    text-align: center;
+    color: #475569;
+    font-size: 13px;
+}
+
 @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+@keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
 
 @media (max-width:1100px) { .db-grid-4{grid-template-columns:repeat(2,1fr)} }
 @media (max-width:860px)  { .db-row.c2,.db-row.c3-2{grid-template-columns:1fr} .kpi-row{grid-template-columns:1fr} }

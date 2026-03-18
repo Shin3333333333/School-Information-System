@@ -215,9 +215,32 @@
                 </tr>
             </thead>
             <tbody id="student-table-body">
-                <tr><td colspan="4" style="text-align:center; padding:40px; color:var(--dk-t4);">
-                    <span class="loading loading-dots loading-sm" style="color:#60a5fa;"></span>
-                </td></tr>
+                <!-- Skeleton Loading State -->
+                <script>
+                    for(let i=0; i<5; i++) {
+                        document.write(`
+                            <tr>
+                                <td>
+                                    <div class="cell-detail">
+                                        <div class="skeleton skeleton-avatar"></div>
+                                        <div style="flex:1">
+                                            <div class="skeleton skeleton-text" style="width: 140px;"></div>
+                                            <div class="skeleton skeleton-text" style="width: 100px;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><div class="skeleton skeleton-text" style="width: 80px;"></div></td>
+                                <td><div class="skeleton skeleton-badge"></div></td>
+                                <td>
+                                    <div class="row-actions" style="justify-content:center;">
+                                        <div class="skeleton skeleton-btn"></div>
+                                        <div class="skeleton skeleton-btn"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        `);
+                    }
+                </script>
             </tbody>
         </table>
     </div>
@@ -496,7 +519,7 @@ $(function () {
             return;
         }
 
-        rows.forEach(function (s) {
+        rows.forEach(function (s, idx) {
             const isActive  = (s.status ?? '').toLowerCase() === 'active';
             const dotClass  = isActive ? 'dot-green' : 'dot-red';
             const badgeCls  = isActive ? 'status-active' : 'status-inactive';
@@ -512,8 +535,11 @@ $(function () {
                 ? '<button class="btn-row-delete" disabled title="Admin accounts cannot be deleted">Delete</button>'
                 : `<button class="btn-row-delete" data-id="${s.id}" data-name="${(s.name ?? '').replace(/"/g, '&quot;')}">Delete</button>`;
 
+            // Staggered animation delay
+            const delay = (idx * 0.03).toFixed(2);
+
             tbody.append(`
-                <tr>
+                <tr class="animate-row" style="animation-delay: ${delay}s">
                     <td>
                         <div class="cell-detail">
                             <div class="detail-dot ${dotClass}"></div>
@@ -686,8 +712,15 @@ $(function () {
         const id = $deleteBackdrop.data('current-id');
         if (!id) return;
         closeDeleteModal();
-        const loadingEl = document.getElementById('loading-modal');
-        if (loadingEl) loadingEl.style.display = 'flex';
+
+        // --- OPTIMISTIC UI ---
+        const studentIndex = allStudents.findIndex(s => s.id == id);
+        let revertedList = [...allStudents];
+        if (studentIndex > -1) {
+            allStudents[studentIndex].status = 'Inactive';
+            renderStudents();
+            updateStatCards();
+        }
 
         $.ajax({
             url:         URL_DESTROY.replace(':id', id),
@@ -695,17 +728,17 @@ $(function () {
             contentType: 'application/json',
             data:        JSON.stringify({ id: id, _method: 'DELETE' }),
             success: function (res) {
-                if (loadingEl) loadingEl.style.display = 'none';
                 if (res.status === 'success') {
                     showPopup('Done', res.message, 'success');
-                    fetchStudents();
+                    // We don't need to fetch if it worked. Optimistic UI covers it.
                 } else {
                     showPopup('Error', res.message, 'error');
+                    allStudents = revertedList; renderStudents(); updateStatCards(); // Revert
                 }
             },
             error: function (xhr) {
-                if (loadingEl) loadingEl.style.display = 'none';
                 showPopup('Error', xhr.responseJSON?.message ?? 'Soft delete failed.', 'error');
+                allStudents = revertedList; renderStudents(); updateStatCards(); // Revert
             }
         });
     });
@@ -715,8 +748,15 @@ $(function () {
         const id = $deleteBackdrop.data('current-id');
         if (!id) return;
         closeDeleteModal();
-        const loadingEl = document.getElementById('loading-modal');
-        if (loadingEl) loadingEl.style.display = 'flex';
+
+        // --- OPTIMISTIC UI ---
+        const studentIndex = allStudents.findIndex(s => s.id == id);
+        let revertedList = [...allStudents];
+        if (studentIndex > -1) {
+            allStudents.splice(studentIndex, 1);
+            renderStudents();
+            updateStatCards();
+        }
 
         $.ajax({
             url:         URL_HARD_DELETE + id,
@@ -724,17 +764,16 @@ $(function () {
             contentType: 'application/json',
             data:        JSON.stringify({ id: id, _method: 'DELETE' }),
             success: function (res) {
-                if (loadingEl) loadingEl.style.display = 'none';
                 if (res.status === 'success') {
                     showPopup('Deleted', res.message, 'success');
-                    fetchStudents();
                 } else {
                     showPopup('Error', res.message, 'error');
+                    allStudents = revertedList; renderStudents(); updateStatCards(); // Revert
                 }
             },
             error: function (xhr) {
-                if (loadingEl) loadingEl.style.display = 'none';
                 showPopup('Error', xhr.responseJSON?.message ?? 'Hard delete failed.', 'error');
+                allStudents = revertedList; renderStudents(); updateStatCards(); // Revert
             }
         });
     });
@@ -790,8 +829,18 @@ $(function () {
         }
 
         const $btn = $(this).prop('disabled', true).text('Saving…');
-        const loadingEl = document.getElementById('loading-modal');
-        if (loadingEl) loadingEl.style.display = 'flex';
+
+        // --- OPTIMISTIC UI ---
+        const studentIndex = allStudents.findIndex(s => s.id == id);
+        let revertedList = [...allStudents];
+        if (studentIndex > -1) {
+            allStudents[studentIndex].name = fname + ' ' + lname;
+            allStudents[studentIndex].email = email;
+            allStudents[studentIndex].status = payload.status;
+            renderStudents();
+            updateStatCards();
+        }
+        closeModal();
 
         $.ajax({
             url:         URL_UPDATE.replace(':id', id),

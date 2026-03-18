@@ -190,9 +190,9 @@ private function getRoutesByRole(string $role): array
     // ── Casual/greeting patterns — skip DB entirely ───────────────────────────
     private array $casualPatterns = [
         'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
-        'how are you', 'what can you do', 'thanks', 'thank you',
+        'how are you', 'how are u', 'what can you do', 'thanks', 'thank you',
         'okay', 'ok', 'sure', 'alright', 'bye', 'goodbye', 'sup', 'yo',
-        'what is sis', 'help', 'what can you help', 'what do you do',
+        'what is sis', 'help', 'what can you help', 'what do you do', 'who are you',
     ];
 
     public function send(Request $request)
@@ -243,16 +243,33 @@ private function getRoutesByRole(string $role): array
             }
 
             // ── Static school snapshot ────────────────────────────────────────
-            $totalStudents  = DB::table('users')->where('role_id', 2)->where('status', 'Active')->count();
-            $totalTeachers  = DB::table('users')->where('role_id', 1)->where('status', 'Active')->count();
-            $newThisMonth   = DB::table('users')->where('role_id', 2)->where('status', 'Active')
-                                ->whereMonth('created_at', now()->month)
-                                ->whereYear('created_at', now()->year)->count();
-            $announcements  = DB::table('announcements')->count();
-            $events         = DB::table('events')->count();
-            $activePolicies = DB::table('policies')->where('status', 'Active')->count();
-            $sections       = DB::table('section')->count();
-            $gradeLevels    = DB::table('grade_level')->pluck('grade_level_name')->implode(', ');
+            $schoolDataSnapshot = '';
+            // Only provide snapshot if the user might be asking a general question,
+            // or if we didn't match a specific dynamic intent (and it's not just a casual greeting).
+            if (!$isCasual && !$detectedIntent) {
+                $totalStudents  = DB::table('users')->where('role_id', 2)->where('status', 'Active')->count();
+                $totalTeachers  = DB::table('users')->where('role_id', 1)->where('status', 'Active')->count();
+                $newThisMonth   = DB::table('users')->where('role_id', 2)->where('status', 'Active')
+                                    ->whereMonth('created_at', now()->month)
+                                    ->whereYear('created_at', now()->year)->count();
+                $announcements  = DB::table('announcements')->count();
+                $events         = DB::table('events')->count();
+                $activePolicies = DB::table('policies')->where('status', 'Active')->count();
+                $sections       = DB::table('section')->count();
+                $gradeLevels    = DB::table('grade_level')->pluck('grade_level_name')->implode(', ');
+
+                $schoolDataSnapshot = "
+            BACKGROUND SCHOOL DATA SNAPSHOT (Draw from this ONLY if asked generally about the school):
+            - Total active students: {$totalStudents}
+            - Total active teachers: {$totalTeachers}
+            - New students enrolled this month: {$newThisMonth}
+            - Total sections: {$sections}
+            - Grade levels offered: {$gradeLevels}
+            - Total announcements posted: {$announcements}
+            - Total school events: {$events}
+            - Active policies: {$activePolicies}
+                ";
+            }
 
             // ── Role-specific instructions ────────────────────────────────────
             $roleInstructions = $this->getRoleInstructions($userRole);
@@ -269,42 +286,29 @@ private function getRoutesByRole(string $role): array
 
             {$roleInstructions}
 
-            PERSONALITY:
-            - Warm, professional, and concise.
+            PERSONALITY & FORMATTING:
+            - Be warm, professional, helpful, and concise.
             - Address the user by their first name naturally when it fits.
-            - For greetings — respond with a SHORT friendly greeting ONLY. Do NOT list data or stats.
-            - For casual small talk, keep it to 1-2 sentences max.
-            - Only provide data when the user explicitly asks for it.
-            - Never volunteer information the user did not ask for.
+            - If the user says 'hi' or 'how are you', respond warmly but briefly. Do NOT list data or stats unless requested.
+            - Keep answers concise. Use bullet points for readability when listing information.
+            - Use basic markdown (e.g., **bold**, *italic*) to highlight important terms. Do NOT use header markdown like '#'.
+            - Never volunteer information the user did not ask for. Do not hallucinate data.
 
             STRICT OUTPUT RULES — NEVER BREAK THESE:
             - Output ONLY the final response. Nothing else.
             - NEVER include thinking steps, reasoning, drafts, or self-checks.
             - NEVER start with 'Thinking:', 'Draft:', 'Final Output:', 'Step:', or any internal commentary.
-            - NEVER explain what you are about to do. Just do it.
-            - Keep answers under 150 words unless listing data that requires more.
+            - NEVER explain what you are about to do. Just answer.
             - **ABSOLUTELY DO NOT create or suggest any navigation links yourself.** 
-            - **ONLY use navigation links that are explicitly provided in the NAVIGATION section below.**
-            - If no navigation link is provided, DO NOT mention any links at all.
+            - **ONLY use navigation links if explicitly provided in the data context below.**
 
             LOGGED IN USER:
             - Name: {$userName}
             - Role: {$userRole}
-            - Email: {$user->email}
 
             {$navContext}
-
-            SCHOOL DATA SNAPSHOT (as of " . now()->format('F d, Y') . "):
-            - Total active students: {$totalStudents}
-            - Total active teachers: {$totalTeachers}
-            - New students enrolled this month: {$newThisMonth}
-            - Total sections: {$sections}
-            - Grade levels offered: {$gradeLevels}
-            - Total announcements posted: {$announcements}
-            - Total school events: {$events}
-            - Active policies: {$activePolicies}
-
-            " . ($dynamicContext ? "ADDITIONAL DATA FOR THIS QUERY:\n{$dynamicContext}" : '') . "
+            {$schoolDataSnapshot}
+            " . ($dynamicContext ? "\nHERE IS THE REQUESTED DATA:\n{$dynamicContext}" : '') . "
         ";
 
             // ── Build messages array with history ─────────────────────────────
@@ -325,7 +329,7 @@ private function getRoutesByRole(string $role): array
                 'HTTP-Referer'  => env('APP_URL', 'http://localhost'),
                 'X-Title'       => 'School Information System',
             ])->post('https://openrouter.ai/api/v1/chat/completions', [
-                'model'      => 'mistralai/mixtral-8x7b-instruct',
+                'model'      => 'openai/gpt-4o-mini',
                 'max_tokens' => 1024,
                 'messages'   => $messages,
             ]);
@@ -364,7 +368,7 @@ private function getRoutesByRole(string $role): array
             $reply = $this->cleanLeaks($reply);
 
             // ── Convert markdown links to HTML ────────────────────────────────
-            $reply = $this->renderLinks($reply);
+            $reply = $this->renderMarkdown($reply);
 
             if (empty($reply)) {
                 Log::warning("Empty reply. Full response: " . json_encode($data));
@@ -405,14 +409,17 @@ private function getRoutesByRole(string $role): array
     private function isCasualMessage(string $msg): bool
     {
         // Very short messages are likely casual
-        if (strlen($msg) < 15) {
+        if (strlen(trim($msg)) < 25) {
             foreach ($this->casualPatterns as $pattern) {
-                if (str_contains($msg, $pattern)) return true;
+                if (str_contains(strtolower($msg), $pattern)) return true;
             }
         }
         // Exact casual matches regardless of length
-        $exactCasual = ['hi', 'hello', 'hey', 'ok', 'okay', 'thanks', 'thank you', 'bye', 'goodbye'];
-        return in_array(trim($msg), $exactCasual);
+        $msgClean = strtolower(trim(preg_replace('/[^a-z0-9\s]/i', '', $msg)));
+        $exactCasual = ['hi', 'hello', 'hey', 'ok', 'okay', 'thanks', 'thank you', 'bye', 'goodbye', 'how are you'];
+        if (in_array($msgClean, $exactCasual)) return true;
+        
+        return false;
     }
 
     // ── Smarter intent detection via keyword scoring ──────────────────────────
@@ -556,17 +563,26 @@ private function getRoutesByRole(string $role): array
         return trim($reply);
     }
 
-    // ── Convert markdown links to clickable HTML ──────────────────────────────
-    private function renderLinks(string $reply): string
+    // ── Convert markdown to clickable HTML ──────────────────────────────
+    private function renderMarkdown(string $reply): string
     {
-        // Markdown links: [Label](/path) or [Label](https://...)
+        // 1. Markdown Links: [Label](/path) or [Label](https://...)
         $reply = preg_replace(
             '/\[([^\]]+)\]\((https?:\/\/[^\)]+|\/[^\)]+)\)/',
             '<a href="$2" class="chat-link" onclick="window.location.href=\'$2\'; return false;">$1 →</a>',
             $reply
         );
 
-        // Plain URLs not already wrapped
+        // 2. Bold: **text**
+        $reply = preg_replace('/\*\*([^\*]+)\*\*/', '<strong>$1</strong>', $reply);
+
+        // 3. Italic: *text*
+        $reply = preg_replace('/\*([^\*]+)\*/', '<em>$1</em>', $reply);
+        
+        // 4. Bullet points: • or - at start of line
+        $reply = preg_replace('/^(?:-|\*|•)\s+(.+)$/m', '• $1', $reply);
+
+        // Plain URLs not already wrapped (basic fallback)
         $reply = preg_replace(
             '/(?<!\()(?<!")(https?:\/\/[^\s<]+(?:\/[^\s<]*)?)(?!\))/',
             '<a href="$1" class="chat-link" onclick="window.location.href=\'$1\'; return false;">$1 →</a>',
