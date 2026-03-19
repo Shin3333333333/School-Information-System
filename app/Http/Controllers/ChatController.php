@@ -72,7 +72,6 @@ private function getRoutesByRole(string $role): array
         ];
     }
 }
-
     // ── Intent definitions: each intent has weighted keyword groups ───────────
     private array $intents = [
         'profile' => [
