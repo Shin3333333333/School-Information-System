@@ -185,6 +185,20 @@ private function getRoutesByRole(string $role): array
             ],
             'min_score' => 2,
         ],
+        'user_search' => [
+            'keywords' => [
+                'find user' => 3, 'search user' => 3, 'user named' => 3,
+                'user called' => 3, 'look for user' => 3,
+                'find person' => 2, 'search person' => 2,
+                'is there a user' => 3, 'are there users' => 2,
+                'user with name' => 3, 'user by name' => 3,
+                'find student' => 3, 'search student' => 3, 'student named' => 3,
+                'student called' => 3, 'find teacher' => 3, 'search teacher' => 3,
+                'teacher named' => 3, 'teacher called' => 3,
+                'user' => 1,
+            ],
+            'min_score' => 2,
+        ],
     ];
 
     // ── Casual/greeting patterns — skip DB entirely ───────────────────────────
@@ -237,7 +251,7 @@ private function getRoutesByRole(string $role): array
                 }
 
                 // ── Fetch data based on intent + role ─────────────────────────
-                $dynamicContext = $this->fetchDataForIntent($detectedIntent, $user, $userRole);
+                $dynamicContext = $this->fetchDataForIntent($detectedIntent, $message, $user, $userRole);
 
                 Log::info("Chat Debug — dynamicContext: " . ($dynamicContext ?: 'EMPTY — no DB data fetched'));
             }
@@ -447,7 +461,7 @@ private function getRoutesByRole(string $role): array
     }
 
     // ── Fetch data based on detected intent + role ────────────────────────────
-    private function fetchDataForIntent(?string $intent, $user, string $role): string
+    private function fetchDataForIntent(?string $intent, string $message, $user, string $role): string
     {
         if (!$intent) return '';
 
@@ -482,7 +496,9 @@ private function getRoutesByRole(string $role): array
             'school_info'    => $this->getSchoolInfo(),
             'summary'        => $this->getAdminSummary(),
             'academic_years' => $this->getAcademicYears(),
+             'user_search' => $this->searchUser($message, $user, $role),
             'navigation'     => '', // handled via $navigationLink separately
+            
             default          => '',
         };
     }
@@ -1061,4 +1077,220 @@ private function getSchoolInfo(): string
         
         return $out;
     }
+    // ── Search for a specific student by name ─────────────────────────────────
+private function searchStudent(string $message, $user, string $role): string
+{
+    // Extract name from message
+    $name = $this->extractName($message);
+    if (!$name) {
+        return "Please specify a name, e.g., 'Is there a student named John Doe?'";
+    }
+
+    // Base query for active students
+    $query = DB::table('users as u')
+        ->join('user_details as d', 'u.details_id', '=', 'd.id')
+        ->join('grade_level as gl', 'd.grade_level_id', '=', 'gl.id')
+        ->join('section as sc', 'd.section_id', '=', 'sc.id')
+        ->where('u.role_id', 2)
+        ->where('u.status', 'Active')
+        ->where('u.name', 'LIKE', '%' . $name . '%');
+
+    // Role‑based filtering
+    if ($role === 'Teacher') {
+        // Get sections taught by this teacher
+        $sections = DB::table('schedule')
+            ->where('user_id', $user->id)
+            ->distinct()
+            ->pluck('section_id');
+        if ($sections->isEmpty()) {
+            return "You don't have any sections assigned, so you cannot search for students.";
+        }
+        $query->whereIn('d.section_id', $sections);
+    } elseif ($role === 'Student') {
+        // Students can only see themselves
+        $query->where('u.id', $user->id);
+    }
+    // Admin has no extra filter
+
+    $students = $query->orderBy('d.lname')
+        ->orderBy('d.fname')
+        ->get([
+            'u.id',
+            'u.name',
+            'd.student_no',
+            'gl.grade_level_name',
+            'sc.section_name'
+        ]);
+
+    if ($students->isEmpty()) {
+        return "No active student found with a name matching '{$name}'.";
+    }
+
+    if ($students->count() === 1) {
+        $s = $students->first();
+        return "**Student Found:**\n\n"
+            . "• **Name:** {$s->name}\n"
+            . "• **LRN:** {$s->student_no}\n"
+            . "• **Grade & Section:** {$s->grade_level_name} - {$s->section_name}\n"
+            . ($role === 'Admin' ? "\nView all students: [User Management](/students)" : "");
+    }
+
+    // Multiple matches
+    $out = "**Multiple students found matching '{$name}':**\n\n";
+    foreach ($students as $s) {
+        $out .= "• **{$s->name}** – {$s->grade_level_name} - {$s->section_name} (LRN: {$s->student_no})\n";
+    }
+    $out .= "\n" . ($role === 'Admin'
+        ? "View all students: [User Management](/students)"
+        : "Please refine your search.");
+    return $out;
+}
+
+// ── Extract a name from the user's message ───────────────────────────────
+private function extractName(string $message): ?string
+{
+    // Patterns that typically introduce a name
+    $patterns = [
+        '/\b(?:named|called|name is|student)\s+([A-Za-z\s]+)/i',
+        '/\b(?:find|search for|look for|get)\s+([A-Za-z\s]+)/i',
+        '/\b(?:is there a|are there any)\s+([A-Za-z\s]+)\s+(?:student|students)/i',
+        '/\b(?:student|students)\s+(?:named|called)?\s*([A-Za-z\s]+)/i',
+    ];
+
+    foreach ($patterns as $pattern) {
+        if (preg_match($pattern, $message, $matches)) {
+            $name = trim($matches[1]);
+            // Remove extra spaces and common stop words at the end
+            $name = preg_replace('/\s+(and|or|in|at|for)$/i', '', $name);
+            if (!empty($name)) {
+                return $name;
+            }
+        }
+    }
+
+    // Fallback: if the message is short and looks like a name (e.g., "John Doe")
+    if (strlen($message) < 50 && !str_contains($message, ' ')) {
+        // Single word – could be a first name, we'll still try
+        return trim($message);
+    }
+
+    return null;
+}
+/**
+ * Search for users (students or teachers) by name.
+ */
+private function searchUser(string $message, $user, string $role): string
+{
+    $name = $this->extractName($message);
+    if (!$name) {
+        return "Please specify a name, e.g., 'Find user John Doe' or 'Search for teacher Maria Santos'.";
+    }
+
+    // Determine what type of user to search for
+    $searchStudents = true;
+    $searchTeachers = true;
+    $msgLower = strtolower($message);
+
+    if (str_contains($msgLower, 'teacher') && !str_contains($msgLower, 'student')) {
+        $searchStudents = false;
+    } elseif (str_contains($msgLower, 'student') && !str_contains($msgLower, 'teacher')) {
+        $searchTeachers = false;
+    }
+    // If both words appear or neither, search both (subject to role permissions)
+
+    $results = [];
+
+    // ── Search students ──────────────────────────────────────────────
+    if ($searchStudents) {
+        $studentQuery = DB::table('users as u')
+            ->join('user_details as d', 'u.details_id', '=', 'd.id')
+            ->join('grade_level as gl', 'd.grade_level_id', '=', 'gl.id')
+            ->join('section as sc', 'd.section_id', '=', 'sc.id')
+            ->where('u.role_id', 2)
+            ->where('u.status', 'Active')
+            ->where('u.name', 'LIKE', '%' . $name . '%');
+
+        // Apply role filters for students
+        if ($role === 'Teacher') {
+            $sections = DB::table('schedule')
+                ->where('user_id', $user->id)
+                ->distinct()
+                ->pluck('section_id');
+            if ($sections->isEmpty()) {
+                $studentQuery->whereRaw('1 = 0'); // no sections → no results
+            } else {
+                $studentQuery->whereIn('d.section_id', $sections);
+            }
+        } elseif ($role === 'Student') {
+            $studentQuery->where('u.id', $user->id);
+        }
+
+        $students = $studentQuery
+            ->orderBy('d.lname')->orderBy('d.fname')
+            ->get(['u.id', 'u.name', 'd.student_no', 'gl.grade_level_name', 'sc.section_name']);
+
+        foreach ($students as $s) {
+            $results[] = [
+                'type' => 'student',
+                'name' => $s->name,
+                'id'   => $s->student_no,
+                'details' => "{$s->grade_level_name} - {$s->section_name}",
+            ];
+        }
+    }
+
+    // ── Search teachers ──────────────────────────────────────────────
+    if ($searchTeachers && $role === 'Admin') { // Only admin can search teachers
+        $teacherQuery = DB::table('users as u')
+            ->join('teacher_details as d', 'u.details_id', '=', 'd.id')
+            ->where('u.role_id', 1)
+            ->where('u.status', 'Active')
+            ->where('u.name', 'LIKE', '%' . $name . '%');
+
+        $teachers = $teacherQuery
+            ->orderBy('d.lname')->orderBy('d.fname')
+            ->get(['u.id', 'u.name', 'd.employee_id', 'd.department', 'd.position']);
+
+        foreach ($teachers as $t) {
+            $results[] = [
+                'type' => 'teacher',
+                'name' => $t->name,
+                'id'   => $t->employee_id,
+                'details' => "{$t->department} - {$t->position}",
+            ];
+        }
+    }
+
+    if (empty($results)) {
+        return "No active " . ($searchStudents && $searchTeachers ? 'users' : ($searchStudents ? 'students' : 'teachers'))
+            . " found with a name matching '{$name}'.";
+    }
+
+    // Format the output
+    if (count($results) === 1) {
+        $r = $results[0];
+        $out = "**" . ucfirst($r['type']) . " Found:**\n\n";
+        $out .= "• **Name:** {$r['name']}\n";
+        $out .= "• **" . ($r['type'] === 'student' ? 'LRN' : 'Employee ID') . ":** {$r['id']}\n";
+        $out .= "• **Details:** {$r['details']}\n";
+        if ($role === 'Admin') {
+            $out .= "\nView all " . ($r['type'] === 'student' ? 'students' : 'teachers') . ": "
+                . ($r['type'] === 'student' ? '[User Management](/students)' : '[User Management](/students)');
+        }
+        return $out;
+    }
+
+    // Multiple matches
+    $typeLabel = $searchStudents && $searchTeachers ? 'users' : ($searchStudents ? 'students' : 'teachers');
+    $out = "**Multiple {$typeLabel} found matching '{$name}':**\n\n";
+    foreach ($results as $r) {
+        $out .= "• **{$r['name']}** ({$r['type']}) – {$r['details']} (ID: {$r['id']})\n";
+    }
+    if ($role === 'Admin') {
+        $out .= "\nView all: [User Management](/students)";
+    } else {
+        $out .= "\nPlease refine your search.";
+    }
+    return $out;
+}
 }
