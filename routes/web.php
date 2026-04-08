@@ -3,10 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\StudentController;
-use App\Http\Controllers\EnrollmentController;
-use App\Http\Controllers\FeeController;
+// use App\Http\Controllers\EnrollmentController;
+// use App\Http\Controllers\FeeController;
 use App\Http\Controllers\GradeController;
-use App\Http\Controllers\AdminController;
+// use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\AnnouncementController;
@@ -39,11 +39,11 @@ Route::middleware('auth')->group(function () {
 
     // ── Resources ─────────────────────────────────────────────────────────────
     Route::resource('students',   StudentController::class);
-    Route::resource('enrollment', EnrollmentController::class)->only(['index','show']);
-    Route::resource('fees',       FeeController::class)->only(['index','create','store']);
+    // Route::resource('enrollment', EnrollmentController::class)->only(['index','show']);
+    // Route::resource('fees',       FeeController::class)->only(['index','create','store']);
 
     // Admin index — flat route, avoids duplicate prefix group conflict
-    Route::get('admin', [AdminController::class, 'index'])->name('admin.index');
+    // Route::get('admin', [AdminController::class, 'index'])->name('admin.index');
 
     // ── Populate Fields ───────────────────────────────────────────────────────
     Route::get('fields/subjects',              [PopulateFieldsController::class, 'getSubjects'])->name('fields.subjects');
@@ -56,11 +56,20 @@ Route::middleware('auth')->group(function () {
     Route::post('chat/send',  [ChatController::class, 'send'])->name('chat.send');
     Route::post('chat/clear', [ChatController::class, 'clearHistory'])->name('chat.clear');
 
-    // ── Academic Years ────────────────────────────────────────────────────────
-    Route::get('academic-years',             [AcademicYearController::class, 'index'])->name('academic-years.index');
-    Route::post('academic-years/set-active', [AcademicYearController::class, 'setActive'])->name('academic-years.setActive');
-    Route::post('academic-years/store',      [AcademicYearController::class, 'store'])->name('academic-years.store');
-    Route::post('academic-years/destroy',    [AcademicYearController::class, 'destroy'])->name('academic-years.destroy');
+// ACADEMIC YEARS
+    Route::get('academic-years', [AcademicYearController::class, 'index'])
+        ->name('academic-years.index');
+    Route::post('academic-years/store', [AcademicYearController::class, 'store'])
+        ->name('academic-years.store');
+    Route::post('academic-years/set-active', [AcademicYearController::class, 'setActive'])
+        ->name('academic-years.setActive');
+    Route::post('academic-years/destroy', [AcademicYearController::class, 'destroy'])
+        ->name('academic-years.destroy');
+
+
+    // Get current active academic year API endpoint (accessible to all authenticated users)
+    Route::get('api/academic-years/current', [AcademicYearController::class, 'getCurrentYear'])
+        ->name('academic-years.current');
 
     // ── Policies ──────────────────────────────────────────────────────────────
     Route::get('admin/policies',              [PoliciesController::class, 'index'])->name('admin.policies');
@@ -151,9 +160,11 @@ Route::middleware('auth')->group(function () {
 
     // ── Student nav pages ─────────────────────────────────────────────────────
     Route::get('student/dashboard',     fn() => view('dashboard'))->name('student.dashboard');
+    Route::get('student/announcements/list', [AnnouncementController::class, 'studentAnnouncements'])
+    ->name('student.announcements.list')
+    ->middleware('auth');
     Route::get('student/announcements', fn() => view('announcements'))->name('student.announcements');
     Route::get('student/policies',      fn() => view('policies'))->name('student.policies');
-
 
     // ── Profile (all roles) ───────────────────────────────────────────────────
     Route::get('profile',          [App\Http\Controllers\ProfileController::class, 'index'])->name('profile.index');

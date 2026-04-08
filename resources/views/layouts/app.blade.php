@@ -15,6 +15,31 @@
 <body>
 
 <style>
+/* ── Clickable account card ─────────────────────────────────────────────────*/
+.sidebar-account-card.a_is-link {
+    text-decoration: none;
+    transition: all .2s ease;
+}
+.sidebar-account-card.a_is-link:hover {
+    background: rgba(255,255,255,0.09) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* ── Pulse Indicator ────────────────────────────────────────────────────────*/
+.pulse-dot {
+    width: 6px;
+    height: 6px;
+    background-color: #10b981;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulse 2s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+@keyframes pulse {
+    to { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+
 /* ── Management accordion nav group ─────────────────────────────────────────*/
 .nav-group { display: flex; flex-direction: column; }
 
@@ -490,18 +515,69 @@
             <span class="brand-name">SIS</span>
         </div>
 
-        <div class="sidebar-account-card">
-            <div class="account-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <rect x="2" y="5" width="20" height="14" rx="2" stroke="#2563eb" stroke-width="2"/>
-                    <path d="M2 10h20" stroke="#2563eb" stroke-width="2"/>
-                </svg>
+        @php
+            $activeYearRecord = \Illuminate\Support\Facades\DB::table('academic_years')->where('is_active', 1)->first();
+            $activeAcademicYear = $activeYearRecord ? $activeYearRecord->year_label : 'No Active Year';
+            $isActive = $activeYearRecord ? true : false;
+        @endphp
+
+        @if(auth()->user()->role->name === 'Admin')
+            <a href="{{ route('academic-years.index') }}" class="sidebar-account-card a_is-link" title="Manage Academic Years" style="border: 1px solid {{ $isActive ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)' }}; background: linear-gradient(145deg, rgba(255,255,255,0.02), {{ $isActive ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)' }});">
+                <div class="account-icon" style="background: {{ $isActive ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }};">
+                    @if($isActive)
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#10b981" stroke-width="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6" stroke="#10b981" stroke-width="2"/>
+                            <line x1="8" y1="2" x2="8" y2="6" stroke="#10b981" stroke-width="2"/>
+                            <line x1="3" y1="10" x2="21" y2="10" stroke="#10b981" stroke-width="2"/>
+                        </svg>
+                    @else
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2"/>
+                            <line x1="12" y1="8" x2="12" y2="12" stroke="#ef4444" stroke-width="2"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16" stroke="#ef4444" stroke-width="2"/>
+                        </svg>
+                    @endif
+                </div>
+                <div class="account-info">
+                    <span class="account-label" style="display:flex; align-items:center; gap:6px; {{ !$isActive ? 'color:#ef4444;' : '' }}">
+                        {{ $isActive ? 'CURRENT TERM' : 'ATTENTION' }}
+                        @if($isActive)<span class="pulse-dot"></span>@endif
+                    </span>
+                    <span class="account-value" style="color: {{ $isActive ? '#10b981' : '#fca5a5' }}; font-weight: {{ $isActive ? '700' : '600' }}; font-size: 12.5px;">
+                        {{ $isActive ? $activeAcademicYear : 'No Active Year' }}
+                    </span>
+                </div>
+            </a>
+        @else
+            <div class="sidebar-account-card" style="border: 1px solid {{ $isActive ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)' }}; background: linear-gradient(145deg, rgba(255,255,255,0.02), {{ $isActive ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)' }});">
+                <div class="account-icon" style="background: {{ $isActive ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }};">
+                    @if($isActive)
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#10b981" stroke-width="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6" stroke="#10b981" stroke-width="2"/>
+                            <line x1="8" y1="2" x2="8" y2="6" stroke="#10b981" stroke-width="2"/>
+                            <line x1="3" y1="10" x2="21" y2="10" stroke="#10b981" stroke-width="2"/>
+                        </svg>
+                    @else
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2"/>
+                            <line x1="12" y1="8" x2="12" y2="12" stroke="#ef4444" stroke-width="2"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16" stroke="#ef4444" stroke-width="2"/>
+                        </svg>
+                    @endif
+                </div>
+                <div class="account-info">
+                    <span class="account-label" style="display:flex; align-items:center; gap:6px; {{ !$isActive ? 'color:#ef4444;' : '' }}">
+                        {{ $isActive ? 'CURRENT TERM' : 'SYSTEM ALERT' }}
+                        @if($isActive)<span class="pulse-dot"></span>@endif
+                    </span>
+                    <span class="account-value" style="color: {{ $isActive ? '#10b981' : '#fca5a5' }}; font-weight: {{ $isActive ? '700' : '600' }}; font-size: 12.5px;">
+                        {{ $isActive ? $activeAcademicYear : 'No Active Academic Year' }}
+                    </span>
+                </div>
             </div>
-            <div class="account-info">
-                <span class="account-label">Academic Year</span>
-                <span class="account-value">2024–2025</span>
-            </div>
-        </div>
+        @endif
 
         <nav class="sidebar-nav">
 
@@ -532,7 +608,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
                     <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M8 z`14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
                 Calendar
             </a>
@@ -778,13 +854,13 @@
                     </svg>
                     <input type="text" placeholder="Search student, ID, class…" class="search-input">
                 </div>
-                <button class="icon-btn notif-btn">
+                <!-- <button class="icon-btn notif-btn">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8"/>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                     </svg>
                     <span class="badge">3</span>
-                </button>
+                </button> -->
                 <button class="icon-btn chat-toggle-btn" onclick="toggleChatPanel()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -969,6 +1045,12 @@ function clearChatHistory() {
 document.addEventListener('DOMContentLoaded', function () {
     const loadingModal = document.getElementById('loading-modal');
 
+    // Define loading modal functions globally
+    if (loadingModal) {
+        window.showLoading = () => { loadingModal.style.display = 'flex'; };
+        window.hideLoading = () => { loadingModal.style.display = 'none'; };
+    }
+
     const navType = performance.getEntriesByType('navigation')[0]?.type;
     if (navType === 'reload') {
         sessionStorage.removeItem('sis_chat_html');
@@ -982,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             showConfirmationModal('Logout Confirmation', 'Are you sure you want to log out?', function () {
                 clearChatHistory();
-                if (loadingModal) loadingModal.style.display = 'flex';
+                if (window.showLoading) window.showLoading();
                 document.getElementById('logout-form').submit();
             });
         });
@@ -990,12 +1072,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.sidebar-nav .nav-item').forEach(function (link) {
         link.addEventListener('click', function () {
-            if (link.target !== '_blank' && loadingModal) loadingModal.style.display = 'flex';
+            if (link.target !== '_blank' && window.showLoading) window.showLoading();
         });
     });
 
     window.addEventListener('pageshow', function () {
-        if (loadingModal) loadingModal.style.display = 'none';
+        if (window.hideLoading) window.hideLoading();
     });
 });
 

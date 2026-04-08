@@ -37,7 +37,7 @@ class StudentController extends Controller
     // ── Show create form ──────────────────────────────────────────────────────
     public function create()
     {
-        return view('students.create');
+        return view('admin.create');
     }
 
     // ── Store new user — usp_sql_actions MODE 1 (unchanged) ───────────────────
